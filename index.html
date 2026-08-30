@@ -6,13 +6,24 @@
 <title>Cunho's Burguer — Fazer Pedido</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="config.js"></script>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 :root{ --orange:#FF6B00; --orange-dark:#e55e00; --bg:#0f0f0f; --card:#1a1a1a;
        --card2:#222; --border:#2a2a2a; --red:#ff4444; }
 body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
       min-height:100vh; padding-bottom:96px; }
+
+/* LOADING */
+.loading-ov{ position:fixed; inset:0; background:#070603; z-index:99999;
+             display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+.loading-ov.hide{ display:none; }
+.loading-logo{ font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:4px; color:#efe6dc; }
+.loading-logo span{ color:#FF6B00; }
+.loading-dots{ display:flex; gap:8px; }
+.loading-dots div{ width:10px; height:10px; border-radius:50%; background:#FF6B00; animation:bounce 1.2s infinite; }
+.loading-dots div:nth-child(2){ animation-delay:.2s; }
+.loading-dots div:nth-child(3){ animation-delay:.4s; }
+@keyframes bounce{ 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1);opacity:1} }
 
 /* HEADER */
 .header{ background:#000; padding:16px; text-align:center;
@@ -255,6 +266,12 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
 </head>
 <body>
 
+<!-- LOADING (some while fetching Google Sheets config) -->
+<div class="loading-ov" id="loading-ov">
+  <div class="loading-logo">CUNHO'S <span>BURGUER</span></div>
+  <div class="loading-dots"><div></div><div></div><div></div></div>
+</div>
+
 <header class="header">
   <div class="logo">CUNHO'S <span>BURGUER</span></div>
   <div class="logo-sub">Fazer pedido</div>
@@ -280,7 +297,7 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
 
     <div class="f-card">
       <div class="f-cap">Voltamos</div>
-      <div class="f-day" id="f-day">Amanhã, domingo</div>
+      <div class="f-day" id="f-day">Amanhã</div>
       <div class="f-hours">
         <div class="f-hour">
           <div class="f-hour-i">📲</div>
@@ -372,73 +389,194 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
 </div>
 
 <script>
-/* ══════════ CONFIGURAÇÃO ══════════ */
+/* ════════════════════════════════════════════
+   🔗 PLANILHA GOOGLE SHEETS — ID
+   Não altere esta linha. As configurações
+   são gerenciadas direto na planilha.
+   ════════════════════════════════════════════ */
+const SHEETS_ID = '1VYGCspGLGM0YXzluC6O4BZAW5uvL5dhTw14q3DwABxg';
 
-// ── Tudo abaixo vem do arquivo config.js ──
-const WHATSAPP            = CONFIG.whatsapp;
-const LOJA_FECHADA        = CONFIG.lojaFechada;
-const PROXIMO_DIA         = CONFIG.proximoDia;
-const HORA_PEDIDOS        = CONFIG.horaPedidos;
-const HORA_ENTREGAS       = CONFIG.horaEntregas;
-const MOSTRAR_PIX_NA_TELA = CONFIG.mostrarPixNaTela;
-const ESTOQUE             = CONFIG.estoque;
-const ESTOQUE_VARIANTE    = CONFIG.estoqueSabor;
-const PIX_CHAVE           = CONFIG.pixChave;
-const PIX_NOME            = CONFIG.pixNome;
-const PIX_CIDADE          = CONFIG.pixCidade;
+/* ════════════════════════════════════════════
+   ⚙️ CONFIGURAÇÕES PADRÃO
+   Usadas se a planilha estiver inacessível.
+   ════════════════════════════════════════════ */
+const CONFIG_PADRAO = {
+  lojaFechada:      false,
+  proximoDia:       'Amanhã',
+  horaPedidos:      '18h',
+  horaEntregas:     '19h',
+  whatsapp:         '5511975798062',
+  estoque: {
+    xcunhos: null, tradicional: null, bacon: null, duplo: null,
+    coca: null, sprite: null, acai: 0,
+  },
+  estoqueSabor: {
+    coca_Normal: 0, coca_Zero: null, sprite_Normal: 0, sprite_Zero: null,
+  },
+  precos: {
+    xcunhos: 36.90, tradicional: 43.90, bacon: 50.90, duplo: 57.90,
+    coca: 8.90, sprite: 8.50, acai: 23.90,
+  },
+  upgrade180:      6.00,
+  upgrade180Duplo: 12.00,
+  adicionais: {
+    carne120: 11.00, carne180: 15.00, baconFat: 5.00, baconPic: 3.00,
+    prato: 3.00, cheddar: 2.00, alface: 2.00, cebola: 2.00, tomate: 1.50,
+  },
+  mostrarPixNaTela: false,
+  pixChave:  '126bc16c-7ecd-4018-8c09-d19895b1fd1a',
+  pixNome:   'LEONARDO P GIUSTI',
+  pixCidade: 'INDAIATUBA',
+};
+
+/* ════ VARIÁVEIS GLOBAIS (preenchidas após carregar config) ════ */
+let WHATSAPP, LOJA_FECHADA, PROXIMO_DIA, HORA_PEDIDOS, HORA_ENTREGAS, MOSTRAR_PIX_NA_TELA;
+let ESTOQUE, ESTOQUE_VARIANTE, PIX_CHAVE, PIX_NOME, PIX_CIDADE;
+let PRODUCTS, ADICIONAIS;
 
 const ICONE_ACAI = '<svg viewBox="0 0 32 32" width="26" height="26"><path d="M6.5 10.5h19l-2 16.2a2.6 2.6 0 0 1-2.6 2.3H11.1a2.6 2.6 0 0 1-2.6-2.3l-2-16.2z" fill="#2E0A3D"/><path d="M7.2 15.6h17.6l-1.3 10.9a2.4 2.4 0 0 1-2.4 2.1h-10.2a2.4 2.4 0 0 1-2.4-2.1L7.2 15.6z" fill="#3F1154"/><ellipse cx="16" cy="10.5" rx="9.5" ry="3.1" fill="#5C1A78"/><ellipse cx="16" cy="10.2" rx="7.6" ry="2.3" fill="#7B279C"/><circle cx="12.6" cy="9.6" r="1.5" fill="#4A1263"/><circle cx="17.9" cy="10.6" r="1.7" fill="#4A1263"/><circle cx="20.4" cy="9.3" r="1.2" fill="#4A1263"/></svg>';
 
-const PRODUCTS = {
-  xcunhos: { id:'xcunhos', name:"X-Cunho's", emoji:'🍔', base:CONFIG.precos.xcunhos, up180:CONFIG.upgrade180,
-    duplo:false, type:'burger',
-    desc:'Angus 120g · Pão brioche · Queijo prato · Cheddar · Maionese · Ketchup',
-    remove:['Queijo Prato','Cheddar','Maionese','Ketchup'] },
-
-  tradicional: { id:'tradicional', name:'Tradicional', emoji:'🍔', base:CONFIG.precos.tradicional, up180:CONFIG.upgrade180,
-    duplo:false, type:'burger',
-    desc:'Angus 120g · Pão brioche · Alface · Bacon picado · Tomate · Cebola · Queijo prato · Cheddar · Maionese · Ketchup',
-    remove:['Alface','Tomate','Cebola','Bacon Picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
-
-  bacon: { id:'bacon', name:'Bacon Especial', emoji:'🥓', base:CONFIG.precos.bacon, up180:CONFIG.upgrade180,
-    duplo:false, type:'burger',
-    desc:'Angus 120g · Pão brioche · Bacon fatiado · Queijo prato · 3× Cheddar · Maionese',
-    remove:['Bacon Fatiado','Queijo Prato','Cheddar','Maionese'] },
-
-  duplo: { id:'duplo', name:'Duplo', emoji:'🔥', base:CONFIG.precos.duplo, up180:CONFIG.upgrade180Duplo,
-    duplo:true, type:'burger',
-    desc:'2× Angus 120g · Pão brioche · Alface · Bacon picado · Tomate · Cebola · 2× Queijo prato · 2× Cheddar · Maionese · Ketchup',
-    remove:['Alface','Tomate','Cebola','Bacon Picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
-
-  coca:   { id:'coca',   name:'Coca-Cola 350ml', emoji:'🥤', base:CONFIG.precos.coca,  type:'bebida', desc:'Normal ou Zero' },
-  sprite: { id:'sprite', name:'Sprite 350ml',    emoji:'🥤', base:CONFIG.precos.sprite,  type:'bebida', desc:'Normal ou Zero' },
-  acai:   { id:'acai',   name:'Açaí 350ml',      emoji:'🫐', base:CONFIG.precos.acai, type:'sobremesa',
-            desc:'Açaí cremoso puro · 350ml', icon:ICONE_ACAI }
-};
-
-// Carne extra acompanha o tamanho escolhido
-const ADICIONAIS = [
-  { id:'carne',   nome:'Carne extra',   preco120:CONFIG.adicionais.carne120, preco180:CONFIG.adicionais.carne180, emoji:'🥩' },
-  { id:'bacon_f', nome:'Bacon fatiado', preco:CONFIG.adicionais.baconFat, emoji:'🥓' },
-  { id:'bacon_p', nome:'Bacon picado',  preco:CONFIG.adicionais.baconPic, emoji:'🥓' },
-  { id:'prato',   nome:'Queijo prato',  preco:CONFIG.adicionais.prato, emoji:'🧀' },
-  { id:'cheddar', nome:'Cheddar',       preco:CONFIG.adicionais.cheddar, emoji:'🧀' },
-  { id:'alface',  nome:'Alface',        preco:CONFIG.adicionais.alface, emoji:'🥬' },
-  { id:'cebola',  nome:'Cebola',        preco:CONFIG.adicionais.cebola, emoji:'🧅' },
-  { id:'tomate',  nome:'Tomate',        preco:CONFIG.adicionais.tomate, emoji:'🍅' },
-];
-
-const PONTOS    = ['Ponto −','Ao ponto','Ponto +'];
+const PONTOS   = ['Ponto −','Ao ponto','Ponto +'];
 const VARIANTES = ['Normal','Zero'];
 
-/* ══════════ ESTADO ══════════ */
+/* ════ APLICA CONFIG ════ */
+function aplicarConfig(C) {
+  WHATSAPP            = String(C.whatsapp);
+  LOJA_FECHADA        = C.lojaFechada;
+  PROXIMO_DIA         = C.proximoDia;
+  HORA_PEDIDOS        = C.horaPedidos;
+  HORA_ENTREGAS       = C.horaEntregas;
+  MOSTRAR_PIX_NA_TELA = C.mostrarPixNaTela;
+  ESTOQUE             = C.estoque;
+  ESTOQUE_VARIANTE    = C.estoqueSabor;
+  PIX_CHAVE           = C.pixChave;
+  PIX_NOME            = C.pixNome;
+  PIX_CIDADE          = C.pixCidade;
+
+  PRODUCTS = {
+    xcunhos: { id:'xcunhos', name:"X-Cunho's", emoji:'🍔', base:C.precos.xcunhos, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Angus 120g · Pão brioche · Queijo prato · Cheddar · Maionese · Ketchup',
+      remove:['Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    tradicional: { id:'tradicional', name:'Tradicional', emoji:'🍔', base:C.precos.tradicional, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Angus 120g · Pão brioche · Alface · Bacon picado · Tomate · Cebola · Queijo prato · Cheddar · Maionese · Ketchup',
+      remove:['Alface','Tomate','Cebola','Bacon Picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    bacon: { id:'bacon', name:'Bacon Especial', emoji:'🥓', base:C.precos.bacon, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Angus 120g · Pão brioche · Bacon fatiado · Queijo prato · 3× Cheddar · Maionese',
+      remove:['Bacon Fatiado','Queijo Prato','Cheddar','Maionese'] },
+    duplo: { id:'duplo', name:'Duplo', emoji:'🔥', base:C.precos.duplo, up180:C.upgrade180Duplo,
+      duplo:true, type:'burger',
+      desc:'2× Angus 120g · Pão brioche · Alface · Bacon picado · Tomate · Cebola · 2× Queijo prato · 2× Cheddar · Maionese · Ketchup',
+      remove:['Alface','Tomate','Cebola','Bacon Picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    coca:   { id:'coca',   name:'Coca-Cola 350ml', emoji:'🥤', base:C.precos.coca,   type:'bebida', desc:'Normal ou Zero' },
+    sprite: { id:'sprite', name:'Sprite 350ml',    emoji:'🥤', base:C.precos.sprite, type:'bebida', desc:'Normal ou Zero' },
+    acai:   { id:'acai',   name:'Açaí 350ml',      emoji:'🫐', base:C.precos.acai,   type:'sobremesa',
+              desc:'Açaí cremoso puro · 350ml', icon:ICONE_ACAI },
+  };
+
+  ADICIONAIS = [
+    { id:'carne',   nome:'Carne extra',   preco120:C.adicionais.carne120, preco180:C.adicionais.carne180, emoji:'🥩' },
+    { id:'bacon_f', nome:'Bacon fatiado', preco:C.adicionais.baconFat, emoji:'🥓' },
+    { id:'bacon_p', nome:'Bacon picado',  preco:C.adicionais.baconPic, emoji:'🥓' },
+    { id:'prato',   nome:'Queijo prato',  preco:C.adicionais.prato, emoji:'🧀' },
+    { id:'cheddar', nome:'Cheddar',       preco:C.adicionais.cheddar, emoji:'🧀' },
+    { id:'alface',  nome:'Alface',        preco:C.adicionais.alface, emoji:'🥬' },
+    { id:'cebola',  nome:'Cebola',        preco:C.adicionais.cebola, emoji:'🧅' },
+    { id:'tomate',  nome:'Tomate',        preco:C.adicionais.tomate, emoji:'🍅' },
+  ];
+}
+
+/* ════ CARREGA CONFIG DA PLANILHA GOOGLE SHEETS ════ */
+async function carregarConfigPlanilha() {
+  try {
+    const url = 'https://docs.google.com/spreadsheets/d/' + SHEETS_ID +
+                '/gviz/tq?tqx=out:json&sheet=config&headers=1';
+    const res  = await fetch(url);
+    const text = await res.text();
+    // Remove o wrapper de callback do gviz
+    const json = JSON.parse(text.match(/setResponse\(([\s\S]*)\)/)[1]);
+    // Monta mapa chave → valor
+    const data = {};
+    (json.table.rows || []).forEach(row => {
+      if (row.c && row.c[0] && row.c[0].v !== null) {
+        const chave = String(row.c[0].v).trim();
+        const valor = (row.c[1] && row.c[1].v !== null && row.c[1].v !== undefined)
+          ? row.c[1].v : null;
+        data[chave] = valor;
+      }
+    });
+    return parsearPlanilha(data);
+  } catch (e) {
+    console.warn('[Cunhos] Planilha indisponível — usando config padrão:', e);
+    return CONFIG_PADRAO;
+  }
+}
+
+function parsearPlanilha(d) {
+  const bool    = (v, def) => (v === null || v === undefined) ? def : String(v).toLowerCase() === 'true';
+  const nNull   = (v) => (v === null || v === '' || v === undefined) ? null : Number(v);
+  const nDef    = (v, def) => { const n = nNull(v); return n !== null ? n : def; };
+  const str     = (v, def) => (v !== null && v !== undefined) ? String(v) : def;
+  return {
+    lojaFechada:      bool(d.lojaFechada, false),
+    proximoDia:       str(d.proximoDia, 'Amanhã'),
+    horaPedidos:      str(d.horaPedidos, '18h'),
+    horaEntregas:     str(d.horaEntregas, '19h'),
+    whatsapp:         str(d.whatsapp, '5511975798062'),
+    estoque: {
+      xcunhos:     nNull(d.estoque_xcunhos),
+      tradicional: nNull(d.estoque_tradicional),
+      bacon:       nNull(d.estoque_bacon),
+      duplo:       nNull(d.estoque_duplo),
+      coca:        nNull(d.estoque_coca),
+      sprite:      nNull(d.estoque_sprite),
+      acai:        nNull(d.estoque_acai),
+    },
+    estoqueSabor: {
+      coca_Normal:   nNull(d.sabor_coca_Normal),
+      coca_Zero:     nNull(d.sabor_coca_Zero),
+      sprite_Normal: nNull(d.sabor_sprite_Normal),
+      sprite_Zero:   nNull(d.sabor_sprite_Zero),
+    },
+    precos: {
+      xcunhos:     nDef(d.preco_xcunhos, 36.90),
+      tradicional: nDef(d.preco_tradicional, 43.90),
+      bacon:       nDef(d.preco_bacon, 50.90),
+      duplo:       nDef(d.preco_duplo, 57.90),
+      coca:        nDef(d.preco_coca, 8.90),
+      sprite:      nDef(d.preco_sprite, 8.50),
+      acai:        nDef(d.preco_acai, 23.90),
+    },
+    upgrade180:      nDef(d.upgrade180, 6.00),
+    upgrade180Duplo: nDef(d.upgrade180Duplo, 12.00),
+    adicionais: {
+      carne120: nDef(d.adicional_carne120, 11.00),
+      carne180: nDef(d.adicional_carne180, 15.00),
+      baconFat: nDef(d.adicional_baconFat, 5.00),
+      baconPic: nDef(d.adicional_baconPic, 3.00),
+      prato:    nDef(d.adicional_prato, 3.00),
+      cheddar:  nDef(d.adicional_cheddar, 2.00),
+      alface:   nDef(d.adicional_alface, 2.00),
+      cebola:   nDef(d.adicional_cebola, 2.00),
+      tomate:   nDef(d.adicional_tomate, 1.50),
+    },
+    mostrarPixNaTela: bool(d.mostrarPixNaTela, false),
+    pixChave:  str(d.pixChave, '126bc16c-7ecd-4018-8c09-d19895b1fd1a'),
+    pixNome:   str(d.pixNome, 'LEONARDO P GIUSTI'),
+    pixCidade: str(d.pixCidade, 'INDAIATUBA'),
+  };
+}
+
+/* ════ ESTADO ════ */
 let order = [], uid = 1, draft = null;
 
 const fmt = v => 'R$' + v.toFixed(2).replace('.',',');
 const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const precoAdd = (a,size) => a.id==='carne' ? (size===180 ? a.preco180 : a.preco120) : a.preco;
 
-/* ══════════ ESTOQUE ══════════ */
+/* ════ ESTOQUE ════ */
 const qtdNoCarrinho = pid => order.filter(i => i.p.id === pid).length;
 const esgotado = pid => { const q = ESTOQUE[pid]; return q !== null && q !== undefined && q <= 0; };
 function podeAdicionar(pid){
@@ -446,26 +584,20 @@ function podeAdicionar(pid){
   if (lim === null || lim === undefined) return true;
   return qtdNoCarrinho(pid) < lim;
 }
-
-// checa se um sabor específico (ex: coca_Zero) está esgotado
 function varianteEsgotada(pid, variante){
   const chave = pid + '_' + variante;
   const q = ESTOQUE_VARIANTE[chave];
   return q !== null && q !== undefined && q <= 0;
 }
-
 function aplicarEstoque(){
   Object.keys(PRODUCTS).forEach(pid => {
     const card = document.querySelector('.pcard[data-pid="'+pid+'"]');
     const btn  = document.querySelector('.addbtn[data-pid="'+pid+'"]');
     if (!card) return;
-
-    // se o produto tem variantes controladas e TODAS esgotaram, trava o card inteiro
     let todasVariantesEsgotadas = false;
     if (PRODUCTS[pid].type === 'bebida') {
       todasVariantesEsgotadas = VARIANTES.every(v => varianteEsgotada(pid, v));
     }
-
     const bloq = !podeAdicionar(pid) || todasVariantesEsgotadas;
     card.classList.toggle('sold-out', bloq);
     if (btn){ btn.disabled = bloq; btn.textContent = bloq ? '—' : '+'; }
@@ -482,7 +614,7 @@ function aplicarEstoque(){
   });
 }
 
-/* ══════════ CARDS ══════════ */
+/* ════ CARDS ════ */
 function cardHtml(p){
   const ic = p.icon ? p.icon : p.emoji;
   return '<div class="pcard" data-pid="'+p.id+'">'
@@ -497,7 +629,6 @@ function cardHtml(p){
     + '<button class="addbtn" data-pid="'+p.id+'" onclick="abrirMont(\''+p.id+'\')">+</button>'
     + '</div>';
 }
-
 function desenharCards(){
   const all = Object.values(PRODUCTS);
   document.getElementById('cards-burger').innerHTML = all.filter(p=>p.type==='burger').map(cardHtml).join('');
@@ -505,7 +636,7 @@ function desenharCards(){
   document.getElementById('cards-acai').innerHTML   = all.filter(p=>p.type==='sobremesa').map(cardHtml).join('');
 }
 
-/* ══════════ MONTAGEM ══════════ */
+/* ════ MONTAGEM ════ */
 function totalDraft(){
   if (!draft) return 0;
   if (draft.p.type !== 'burger') return draft.p.base;
@@ -517,14 +648,12 @@ function totalDraft(){
   });
   return t;
 }
-
 function abrirMont(pid){
   if (esgotado(pid))       { aviso('😔<br>Esgotado<br>por hoje'); return; }
   if (!podeAdicionar(pid)) { aviso('😔<br>Quantidade<br>indisponível'); return; }
   if (PRODUCTS[pid].type === 'bebida' && VARIANTES.every(v => varianteEsgotada(pid, v))) {
     aviso('😔<br>Esgotado<br>por hoje'); return;
   }
-  // se for bebida, já abre com o primeiro sabor disponível marcado
   let variantePadrao = 'Normal';
   if (PRODUCTS[pid].type === 'bebida') {
     variantePadrao = VARIANTES.find(v => !varianteEsgotada(pid, v)) || VARIANTES[0];
@@ -535,7 +664,6 @@ function abrirMont(pid){
   desenharMont();
 }
 function fecharMont(){ document.getElementById('mont').classList.remove('show'); draft = null; }
-
 function setSize(s){ draft.size = s; desenharMont(); }
 function setPonto(p){ draft.ponto = p; desenharMont(); }
 function setVariant(v){
@@ -550,7 +678,6 @@ function desenharMont(){
   const p = draft.p;
   const body = document.getElementById('mont-body');
   const lbl = g => p.duplo ? ('2× '+g+'g') : (g+'g');
-
   if (p.type === 'bebida'){
     body.innerHTML =
       '<div><div class="blk-label">🥤 Escolha o tipo</div><div class="sizes">'
@@ -567,7 +694,6 @@ function desenharMont(){
     document.getElementById('mont-preco').textContent = fmt(totalDraft());
     return;
   }
-
   if (p.type === 'sobremesa'){
     body.innerHTML =
       '<div style="text-align:center;padding:10px 0 4px">'
@@ -579,7 +705,6 @@ function desenharMont(){
     document.getElementById('mont-preco').textContent = fmt(totalDraft());
     return;
   }
-
   body.innerHTML =
     '<div><div class="blk-label">🥩 Escolha o tamanho da carne</div><div class="sizes">'
     + '<div class="sz '+(draft.size===120?'on':'')+'" onclick="setSize(120)">'
@@ -587,11 +712,9 @@ function desenharMont(){
     + '<div class="sz '+(draft.size===180?'on':'')+'" onclick="setSize(180)">'
     +   '<div class="sz-g">'+lbl(180)+'</div><div class="sz-p">+'+fmt(p.up180)+'</div></div>'
     + '</div></div>'
-
     + '<div><div class="blk-label">🔥 Ponto da carne</div><div class="pgrid">'
     + PONTOS.map(x => '<button class="pbtn '+(draft.ponto===x?'on':'')+'" onclick="setPonto(\''+x+'\')">'+x+'</button>').join('')
     + '</div></div>'
-
     + '<div><div class="blk-label">➕ Adicionais</div><div class="opts">'
     + ADICIONAIS.map(a => {
         const on = draft.add.includes(a.id);
@@ -602,7 +725,6 @@ function desenharMont(){
           + '<span class="oplus">+'+fmt(precoAdd(a,draft.size))+'</span></div>';
       }).join('')
     + '</div></div>'
-
     + '<div><div class="blk-label">❌ Retirar do lanche</div><div class="opts">'
     + p.remove.map(ing => {
         const on = draft.rem.includes(ing);
@@ -611,10 +733,8 @@ function desenharMont(){
           + '<span class="otxt">Sem '+ing+'</span></div>';
       }).join('')
     + '</div></div>'
-
     + '<div><div class="blk-label">📝 Observação</div>'
     + '<textarea class="obs" placeholder="Alguma observação?" oninput="setObs(this.value)">'+esc(draft.obs)+'</textarea></div>';
-
   document.getElementById('mont-preco').textContent = fmt(totalDraft());
 }
 
@@ -626,14 +746,12 @@ function confirmar(){
 }
 function removerItem(id){ order = order.filter(i => i.uid !== id); render(); }
 
-/* ══════════ CARRINHO ══════════ */
+/* ════ CARRINHO ════ */
 const totalPedido = () => order.reduce((s,i) => s + i.preco, 0);
-
 function render(){
   document.getElementById('empty').style.display = order.length ? 'none' : 'block';
   document.getElementById('total').textContent = fmt(totalPedido());
   document.getElementById('btn-pay').disabled = order.length === 0;
-
   document.getElementById('olist').innerHTML = order.map((it,idx) => {
     const t = it.p.type;
     let tags = '';
@@ -651,11 +769,9 @@ function render(){
       tags += '<span class="tag tg">'+it.variant+'</span>';
     }
     if (it.obs && it.obs.trim()) tags += '<span class="tag tg">📝 '+esc(it.obs.trim())+'</span>';
-
     const ico = it.p.icon
       ? '<span style="display:inline-block;vertical-align:middle">'+it.p.icon.replace('width="26" height="26"','width="17" height="17"')+'</span>'
       : it.p.emoji;
-
     return '<div class="oitem">'
       + '<div style="display:flex;gap:8px;flex:1;min-width:0">'
       +   '<div class="onum">'+(idx+1)+'</div>'
@@ -667,11 +783,10 @@ function render(){
       +   '<button class="odel" onclick="removerItem('+it.uid+')">✕</button>'
       + '</div></div>';
   }).join('');
-
   aplicarEstoque();
 }
 
-/* ══════════ PIX ══════════ */
+/* ════ PIX ════ */
 function crc16(s){
   let crc = 0xFFFF;
   for (let i=0;i<s.length;i++){
@@ -681,7 +796,6 @@ function crc16(s){
   return crc.toString(16).toUpperCase().padStart(4,'0');
 }
 const tlv = (id,v) => id + String(v.length).padStart(2,'0') + v;
-
 function montarPix(valor){
   const conta = tlv('26', tlv('00','br.gov.bcb.pix') + tlv('01', PIX_CHAVE));
   const body = tlv('00','01') + tlv('01','11') + conta + tlv('52','0000') + tlv('53','986')
@@ -690,7 +804,6 @@ function montarPix(valor){
     + tlv('62', tlv('05','***')) + '6304';
   return body + crc16(body);
 }
-
 function atualizarPix(){
   const total = totalPedido();
   const el = document.getElementById('pay-total');
@@ -706,7 +819,6 @@ function atualizarPix(){
   document.getElementById('pix-qr').innerHTML = qr.createImgTag(5,0);
   document.getElementById('pix-code').dataset.code = code;
 }
-
 function copiarPix(){
   const code = document.getElementById('pix-code').dataset.code;
   if (!code){ aviso('⚠️<br>Adicione itens<br>primeiro'); return; }
@@ -715,7 +827,7 @@ function copiarPix(){
     .catch(() => aviso('⚠️<br>Copie<br>manualmente'));
 }
 
-/* ══════════ PAGAMENTO ══════════ */
+/* ════ PAGAMENTO ════ */
 function abrirPagamento(){
   if (LOJA_FECHADA){ aviso('😴<br>Encerramos<br>por hoje'); return; }
   const nome = document.getElementById('cli-nome').value.trim();
@@ -723,7 +835,6 @@ function abrirPagamento(){
   if (!order.length){ aviso('🛒<br>Adicione itens<br>ao seu pedido'); return; }
   if (!nome){ aviso('👤<br>Informe seu nome<br>para continuar'); document.getElementById('cli-nome').focus(); return; }
   if (!end) { aviso('📍<br>Informe seu endereço<br>para continuar'); document.getElementById('cli-end').focus(); return; }
-
   if (MOSTRAR_PIX_NA_TELA) {
     document.getElementById('pay-body').innerHTML =
       '<div class="pay-step">Passo 1 · Pague com Pix</div>'
@@ -752,7 +863,6 @@ function abrirPagamento(){
       + '</div>'
       + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>';
   }
-
   document.getElementById('pay-ov').classList.add('show');
 }
 function fecharPagamento(){ document.getElementById('pay-ov').classList.remove('show'); }
@@ -760,11 +870,9 @@ function fecharPagamento(){ document.getElementById('pay-ov').classList.remove('
 function enviarPedido(){
   const nome = document.getElementById('cli-nome').value.trim();
   const end  = document.getElementById('cli-end').value.trim();
-
   let msg = "🍔 *PEDIDO CUNHO'S BURGUER*\n";
   msg += '👤 *' + nome + '* — ' + end + '\n';
-  msg += '━━━━━━━━━━━━━━━━\n\n';
-
+  msg += '━━━━\n\n';
   order.forEach((it,i) => {
     msg += '*' + (i+1) + '. ' + it.p.emoji + ' ' + it.p.name + '*\n';
     if (it.p.type === 'burger'){
@@ -782,16 +890,13 @@ function enviarPedido(){
     if (it.obs && it.obs.trim()) msg += '   📝 Obs: ' + it.obs.trim() + '\n';
     msg += '   💵 ' + fmt(it.preco) + '\n\n';
   });
-
-  msg += '━━━━━━━━━━━━━━━━\n';
+  msg += '━━━━\n';
   msg += '💰 *TOTAL: ' + fmt(totalPedido()) + '*';
   if (!MOSTRAR_PIX_NA_TELA) {
     msg += '\n\n💳 _Aguardando envio do Pix para pagamento_';
   }
-
   window.open('https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank');
   fecharPagamento();
-
   if (MOSTRAR_PIX_NA_TELA) {
     document.getElementById('modal-comp-body').innerHTML =
       '<div class="modal-i">✅</div>'
@@ -814,14 +919,13 @@ function enviarPedido(){
   }
   setTimeout(() => document.getElementById('modal-comp').classList.add('show'), 700);
 }
-
 function abrirWhats(){
   window.open('https://wa.me/' + WHATSAPP + '?text=' +
     encodeURIComponent('Olá! Segue o comprovante do Pix do meu pedido 📸'), '_blank');
 }
 function fecharComp(){ document.getElementById('modal-comp').classList.remove('show'); }
 
-/* ══════════ AVISO ══════════ */
+/* ════ AVISO ════ */
 function aviso(msg){
   const t = document.getElementById('toast');
   t.innerHTML = msg;
@@ -831,17 +935,29 @@ function aviso(msg){
   t._timer = setTimeout(() => t.style.display = 'none', 3500);
 }
 
-/* ══════════ INICIAR ══════════ */
-if (LOJA_FECHADA) {
-  document.getElementById('f-day').textContent = PROXIMO_DIA;
-  document.getElementById('f-ped').textContent = HORA_PEDIDOS;
-  document.getElementById('f-ent').textContent = HORA_ENTREGAS;
-  document.getElementById('fechado').classList.add('show');
-  document.body.style.overflow = 'hidden';
-} else {
-  desenharCards();
-  render();
-}
+/* ════════════════════════════════════════════
+   🚀 INICIALIZAÇÃO — carrega planilha e inicia
+   ════════════════════════════════════════════ */
+(async function iniciar() {
+  // Carrega config da planilha Google Sheets
+  const config = await carregarConfigPlanilha();
+  aplicarConfig(config);
+
+  // Remove o loading
+  document.getElementById('loading-ov').classList.add('hide');
+
+  // Exibe a tela correta
+  if (LOJA_FECHADA) {
+    document.getElementById('f-day').textContent = PROXIMO_DIA;
+    document.getElementById('f-ped').textContent = HORA_PEDIDOS;
+    document.getElementById('f-ent').textContent = HORA_ENTREGAS;
+    document.getElementById('fechado').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  } else {
+    desenharCards();
+    render();
+  }
+})();
 </script>
 </body>
 </html>
