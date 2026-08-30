@@ -14,7 +14,7 @@ const CONFIG = {
      false = ABERTO  (site funcionando normal)
      ───────────────────────────────────────── */
 
-  lojaFechada: true,
+  lojaFechada: false,
 
   // Textos que aparecem quando está fechado:
   proximoDia:   'Amanhã, domingo',
