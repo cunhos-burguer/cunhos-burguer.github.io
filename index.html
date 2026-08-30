@@ -285,33 +285,19 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
     <div class="f-brand">CUNHO'S <span>BURGUER</span></div>
     <div class="f-rule"></div>
 
-    <div class="f-icon">🔥</div>
+    <div class="f-icon" id="f-icone">😴</div>
     <h1 class="f-title">
-      <span class="a">A BRASA</span>
-      <span class="b">APAGOU</span>
+      <span class="b" id="f-titulo">O CHURRASQUEIRO TIROU O DIA</span>
     </h1>
-    <p class="f-thanks">
-      Encerramos os pedidos por hoje.<br>
-      Obrigado a todos que pediram! 🍔
-    </p>
 
     <div class="f-card">
-      <div class="f-cap">Voltamos</div>
-      <div class="f-day" id="f-day">Amanhã</div>
-      <div class="f-hours">
-        <div class="f-hour">
-          <div class="f-hour-i">📲</div>
-          <div class="f-hour-t">Pedidos a partir das <b id="f-ped">18h</b></div>
-        </div>
-        <div class="f-hour">
-          <div class="f-hour-i">🛵</div>
-          <div class="f-hour-t">Entregas a partir das <b id="f-ent">19h</b></div>
-        </div>
-      </div>
+      <p class="f-thanks" id="f-texto" style="color:#bbaa9c;font-size:13.5px;line-height:1.7;text-align:left;">
+        Hoje a gente deu uma pausa, mas a brasa esquenta de novo em breve!
+      </p>
     </div>
 
     <p class="f-note">
-      <b>Salve este link</b> e faça seu pedido amanhã.<br>
+      <b>Salve este link</b> e faça seu pedido quando abrirmos.<br>
       Te esperamos! 🔥
     </p>
   </div>
@@ -431,7 +417,7 @@ const CONFIG_PADRAO = {
 
 /* ════ VARIÁVEIS GLOBAIS (preenchidas após carregar config) ════ */
 let WHATSAPP, LOJA_FECHADA, PROXIMO_DIA, HORA_PEDIDOS, HORA_ENTREGAS, MOSTRAR_PIX_NA_TELA;
-let ESTOQUE, ESTOQUE_VARIANTE, PIX_CHAVE, PIX_NOME, PIX_CIDADE;
+let ESTOQUE, ESTOQUE_VARIANTE, PIX_CHAVE, PIX_NOME, PIX_CIDADE, MENSAGEM_ATIVA;
 let PRODUCTS, ADICIONAIS;
 
 const ICONE_ACAI = '<svg viewBox="0 0 32 32" width="26" height="26"><path d="M6.5 10.5h19l-2 16.2a2.6 2.6 0 0 1-2.6 2.3H11.1a2.6 2.6 0 0 1-2.6-2.3l-2-16.2z" fill="#2E0A3D"/><path d="M7.2 15.6h17.6l-1.3 10.9a2.4 2.4 0 0 1-2.4 2.1h-10.2a2.4 2.4 0 0 1-2.4-2.1L7.2 15.6z" fill="#3F1154"/><ellipse cx="16" cy="10.5" rx="9.5" ry="3.1" fill="#5C1A78"/><ellipse cx="16" cy="10.2" rx="7.6" ry="2.3" fill="#7B279C"/><circle cx="12.6" cy="9.6" r="1.5" fill="#4A1263"/><circle cx="17.9" cy="10.6" r="1.7" fill="#4A1263"/><circle cx="20.4" cy="9.3" r="1.2" fill="#4A1263"/></svg>';
@@ -447,6 +433,7 @@ function aplicarConfig(C) {
   HORA_PEDIDOS        = C.horaPedidos;
   HORA_ENTREGAS       = C.horaEntregas;
   MOSTRAR_PIX_NA_TELA = C.mostrarPixNaTela;
+  MENSAGEM_ATIVA      = C.mensagens[C.mensagemAtiva - 1];
   ESTOQUE             = C.estoque;
   ESTOQUE_VARIANTE    = C.estoqueSabor;
   PIX_CHAVE           = C.pixChave;
@@ -566,6 +553,29 @@ function parsearPlanilha(d) {
     pixChave:  str(d.pixChave, '126bc16c-7ecd-4018-8c09-d19895b1fd1a'),
     pixNome:   str(d.pixNome, 'LEONARDO P GIUSTI'),
     pixCidade: str(d.pixCidade, 'INDAIATUBA'),
+    mensagemAtiva: Math.max(1, Math.min(4, parseInt(d.mensagemAtiva) || 1)),
+    mensagens: [
+      {
+        icone:  str(d.msg1_icone,  '😴'),
+        titulo: str(d.msg1_titulo, 'O CHURRASQUEIRO TIROU O DIA'),
+        texto:  str(d.msg1_texto,  'Hoje a gente deu uma pausa, mas na {dia} a brasa esquenta de novo e você vai ser muito bem servido! Salva o link e não esquece de nós. 🍔'),
+      },
+      {
+        icone:  str(d.msg2_icone,  '🔥'),
+        titulo: str(d.msg2_titulo, 'AMANHÃ A BRASA ESQUENTA'),
+        texto:  str(d.msg2_texto,  'Amanhã voltamos! Pedidos a partir das 17h e entregas a partir das 19h. Quer garantir o seu no horário certinho? Peça com antecedência. Te esperamos! 🍔'),
+      },
+      {
+        icone:  str(d.msg3_icone,  '🍔'),
+        titulo: str(d.msg3_titulo, 'HOJE TEM HAMBÚRGUER!'),
+        texto:  str(d.msg3_texto,  'Ainda não estamos recebendo pedidos, mas já estamos de olho! A partir das 17h você já pode pedir, e as entregas começam às 19h. Quanto mais cedo você pedir, mais certinho chega. Te esperamos! 🔥'),
+      },
+      {
+        icone:  str(d.msg4_icone,  '✅'),
+        titulo: str(d.msg4_titulo, 'POR HOJE FINALIZAMOS'),
+        texto:  str(d.msg4_texto,  'Por hoje conseguimos servir nossos clientes com muito carinho e capricho. Voltamos na {dia} com pedidos a partir das 17h e entregas a partir das 19h. Até a próxima! 🍔'),
+      },
+    ],
   };
 }
 
@@ -948,9 +958,11 @@ function aviso(msg){
 
   // Exibe a tela correta
   if (LOJA_FECHADA) {
-    document.getElementById('f-day').textContent = PROXIMO_DIA;
-    document.getElementById('f-ped').textContent = HORA_PEDIDOS;
-    document.getElementById('f-ent').textContent = HORA_ENTREGAS;
+    const msg    = MENSAGEM_ATIVA;
+    const textoF = msg.texto.replace(/\{dia\}/g, PROXIMO_DIA);
+    document.getElementById('f-icone').textContent  = msg.icone;
+    document.getElementById('f-titulo').textContent = msg.titulo;
+    document.getElementById('f-texto').textContent  = textoF;
     document.getElementById('fechado').classList.add('show');
     document.body.style.overflow = 'hidden';
   } else {
