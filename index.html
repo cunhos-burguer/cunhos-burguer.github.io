@@ -525,7 +525,11 @@ async function carregarConfigPlanilha() {
 }
 
 function parsearPlanilha(d) {
-  const bool    = (v, def) => (v === null || v === undefined) ? def : String(v).toLowerCase() === 'true';
+  const bool    = (v, def) => {
+    if (v === null || v === undefined || v === '') return def;
+    const s = String(v).trim().toLowerCase();
+    return s === 'true' || s === 'verdadeiro' || s === '1' || s === 'sim';
+  };
   const nNull   = (v) => (v === null || v === '' || v === undefined) ? null : Number(v);
   const nDef    = (v, def) => { const n = nNull(v); return n !== null ? n : def; };
   const str     = (v, def) => (v !== null && v !== undefined) ? String(v) : def;
