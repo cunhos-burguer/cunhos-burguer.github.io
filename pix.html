@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#111111">
+<title>Pagar com Pix — Cunho's Burguer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#111;
+  color:#fff;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding:24px 16px 40px;
+}
+.logo{font-size:36px;margin-bottom:4px}
+.brand{font-size:13px;letter-spacing:2px;color:#888;text-transform:uppercase;margin-bottom:32px}
+.card{
+  background:#1a1a1a;
+  border:1px solid #2a2a2a;
+  border-radius:16px;
+  padding:24px 20px;
+  width:100%;
+  max-width:420px;
+  margin-bottom:20px;
+}
+.pedido-id{
+  font-size:12px;
+  color:#666;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:6px;
+}
+.pedido-valor{
+  font-size:36px;
+  font-weight:700;
+  color:#4ade80;
+  margin-bottom:4px;
+}
+.pedido-label{font-size:14px;color:#888}
+
+.btn-copiar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:100%;
+  max-width:420px;
+  padding:18px;
+  border:none;
+  border-radius:14px;
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .2s;
+  margin-bottom:16px;
+  background:#4ade80;
+  color:#111;
+}
+.btn-copiar:active{transform:scale(.97)}
+.btn-copiar.copiado{background:#22c55e}
+
+.code-box{
+  background:#0d0d0d;
+  border:1px solid #2a2a2a;
+  border-radius:12px;
+  padding:14px 16px;
+  width:100%;
+  max-width:420px;
+  margin-bottom:20px;
+  word-break:break-all;
+  font-size:11px;
+  font-family:'Courier New',monospace;
+  color:#555;
+  line-height:1.5;
+  user-select:all;
+  -webkit-user-select:all;
+}
+.code-label{
+  font-size:11px;
+  color:#444;
+  margin-bottom:6px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+.steps{
+  width:100%;
+  max-width:420px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.step{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.step-n{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:#222;
+  border:1px solid #333;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:700;
+  color:#4ade80;
+  flex-shrink:0;
+}
+.step-txt{font-size:14px;color:#aaa;line-height:1.4}
+.step-txt b{color:#fff}
+
+.divider{
+  width:100%;
+  max-width:420px;
+  height:1px;
+  background:#222;
+  margin:20px 0;
+}
+.aviso{
+  width:100%;
+  max-width:420px;
+  background:#1a1a0a;
+  border:1px solid #333300;
+  border-radius:10px;
+  padding:12px 14px;
+  font-size:12px;
+  color:#aaa;
+  line-height:1.5;
+  text-align:center;
+}
+
+.toast{
+  position:fixed;
+  bottom:32px;
+  left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:#4ade80;
+  color:#111;
+  font-weight:700;
+  font-size:15px;
+  padding:12px 28px;
+  border-radius:100px;
+  transition:transform .3s ease;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+#erro{
+  color:#f87171;
+  font-size:14px;
+  text-align:center;
+  padding:40px 20px;
+  line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="logo">🍔</div>
+<div class="brand">Cunho's Burguer</div>
+
+<div id="conteudo"></div>
+<div id="erro" style="display:none">
+  Link inválido ou expirado.<br>
+  Peça um novo código no WhatsApp.
+</div>
+
+<div class="toast" id="toast">✅ Código copiado!</div>
+
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('c');
+  const valor  = params.get('v');
+  const pedido = params.get('p');
+
+  if (!code) {
+    document.getElementById('erro').style.display = 'block';
+    return;
+  }
+
+  const valorFmt = valor
+    ? 'R$ ' + parseFloat(valor).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+    : 'Veja no WhatsApp';
+
+  const html = `
+    <div class="card">
+      <div class="pedido-id">Pedido #${pedido || '—'}</div>
+      <div class="pedido-valor">${valorFmt}</div>
+      <div class="pedido-label">Valor a pagar via Pix</div>
+    </div>
+
+    <button class="btn-copiar" id="btn" onclick="copiar()">
+      <span id="btn-icon">📋</span>
+      <span id="btn-txt">COPIAR CÓDIGO PIX</span>
+    </button>
+
+    <div class="code-label">Código Pix Copia e Cola</div>
+    <div class="code-box" id="code-box" onclick="copiar()">${escapeHtml(code)}</div>
+
+    <div class="divider"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-txt">Toque em <b>COPIAR CÓDIGO PIX</b> acima</div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-txt">Abra o app do seu banco</div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-txt">Vá em <b>Pix → Pix Copia e Cola</b> e cole o código</div>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <div class="step-txt">Confirme o pagamento de <b>${valorFmt}</b> para <b>Cunho's Burguer</b></div>
+      </div>
+      <div class="step">
+        <div class="step-n">5</div>
+        <div class="step-txt">Volte ao WhatsApp e envie o <b>comprovante</b></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="aviso">
+      ⏳ Seu pedido só começa a ser preparado<br>
+      após o envio do comprovante no WhatsApp.
+    </div>
+  `;
+
+  document.getElementById('conteudo').innerHTML = html;
+
+  window._pixCode = code;
+})();
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copiar(){
+  const code = window._pixCode;
+  if (!code) return;
+
+  const btn     = document.getElementById('btn');
+  const btnTxt  = document.getElementById('btn-txt');
+  const btnIcon = document.getElementById('btn-icon');
+
+  const tentativa = () => {
+    btnIcon.textContent = '✅';
+    btnTxt.textContent  = 'COPIADO! Abra seu banco.';
+    btn.classList.add('copiado');
+    mostrarToast();
+    setTimeout(() => {
+      btnIcon.textContent = '📋';
+      btnTxt.textContent  = 'COPIAR CÓDIGO PIX';
+      btn.classList.remove('copiado');
+    }, 3000);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(tentativa).catch(() => fallback(code, tentativa));
+  } else {
+    fallback(code, tentativa);
+  }
+}
+
+function fallback(text, cb){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+function mostrarToast(){
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
