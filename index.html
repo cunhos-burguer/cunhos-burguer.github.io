@@ -993,7 +993,7 @@ function atualizarPix(){
     return;
   }
   // Usa o ID do pedido atual como txid para correlação no extrato
-  const txid = currentPixId || '***';
+   const txid = '***';
   const info  = currentPixId ? ('PEDIDO ' + currentPixId + ' WHATSAPP') : '';
   const code  = montarPix(total, txid, info);
   const qr    = qrcode(0,'M');
@@ -1102,8 +1102,8 @@ function enviarPedido(){
   msg += '💰 *TOTAL: ' + fmt(total) + '*\n\n';
 
   // ─── Bloco do Pix — link para página de pagamento ──────────────────────────
-  const pixCode = montarPix(total, pedidoId, 'PEDIDO ' + pedidoId);
-  const pixBase = window.location.href.replace(/[^\/]*$/, '');
+ const pixCode = montarPix(total, '***', 'PEDIDO ' + pedidoId);
+ const pixBase = window.location.href.replace(/[^\/]*$/, '');
   const pixUrl  = pixBase + 'pix.html'
     + '?c=' + encodeURIComponent(pixCode)
     + '&v=' + encodeURIComponent(total.toFixed(2))
