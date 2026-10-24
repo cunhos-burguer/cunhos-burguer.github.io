@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<title>Equipe — Frete e Pix</title>
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root{ --orange:#FF6B00; --bg:#0f0f0f; --card:#1a1a1a; --card2:#222; --border:#2a2a2a; --red:#ff4444; --green:#4ade80; }
+body{ background:var(--bg); color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      padding:0 0 40px; min-height:100vh; }
+.header{ background:#000; padding:14px 16px; border-bottom:3px solid var(--orange); position:sticky; top:0; z-index:10;
+         display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.logo{ font-weight:800; letter-spacing:2px; font-size:16px; }
+.logo span{ color:var(--orange); }
+.tag-cfg{ font-size:10px; color:#777; text-align:right; line-height:1.3; }
+.box{ margin:14px 14px 0; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+.t{ font-size:11px; font-weight:700; color:var(--orange); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; }
+label{ display:block; font-size:10px; font-weight:700; color:#777; letter-spacing:1px; text-transform:uppercase; margin:10px 0 5px; }
+label:first-of-type{ margin-top:0; }
+textarea, input{ width:100%; background:#111; border:1px solid var(--border); border-radius:10px; color:#fff;
+                 font-family:inherit; font-size:16px; padding:11px 12px; outline:none; }
+textarea{ min-height:96px; resize:vertical; font-size:13px; }
+textarea:focus, input:focus{ border-color:var(--orange); }
+.row{ display:flex; gap:10px; }
+.row > div{ flex:1; min-width:0; }
+.seg{ display:flex; background:#111; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.seg button{ flex:1; background:none; border:none; color:#999; padding:11px 6px; font-size:13px; font-weight:700; font-family:inherit; }
+.seg button.on{ background:var(--orange); color:#000; }
+.btn{ display:block; width:100%; border:none; border-radius:12px; padding:15px; font-size:15px; font-weight:800;
+      font-family:inherit; cursor:pointer; margin-top:10px; }
+.btn:active{ transform:scale(.98); }
+.b-org{ background:var(--orange); color:#000; }
+.b-grn{ background:var(--green); color:#000; }
+.b-gry{ background:var(--card2); color:#ddd; border:1px solid var(--border); }
+.res{ display:flex; flex-direction:column; gap:7px; }
+.rl{ display:flex; justify-content:space-between; font-size:14px; color:#bbb; }
+.rl b{ color:#fff; }
+.rl.tot{ border-top:1px solid var(--border); padding-top:9px; font-size:18px; color:#fff; font-weight:800; }
+.rl.tot b{ color:var(--orange); }
+.alerta{ background:rgba(255,68,68,.12); border:1px dashed var(--red); color:#ffb4b4; border-radius:10px;
+         padding:10px 12px; font-size:13px; line-height:1.45; margin-top:10px; }
+.info{ font-size:11.5px; color:#888; line-height:1.5; margin-top:8px; }
+.prev{ background:#111; border:1px solid var(--border); border-radius:10px; padding:11px; font-size:12px; color:#aaa;
+       white-space:pre-wrap; word-break:break-word; margin-top:10px; max-height:220px; overflow:auto; }
+.toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--green); color:#000;
+        font-weight:800; padding:12px 22px; border-radius:100px; display:none; z-index:50; white-space:nowrap; }
+table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+th, td{ padding:5px 4px; text-align:center; border-bottom:1px solid #222; }
+th{ color:#888; font-weight:700; font-size:10.5px; }
+tr.sel td{ background:rgba(255,107,0,.18); color:#fff; font-weight:700; }
+details summary{ cursor:pointer; color:#888; font-size:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">CUNHO'S <span>EQUIPE</span></div>
+  <div class="tag-cfg" id="cfg-status">carregando…</div>
+</div>
+
+<!-- 1. PEDIDO -->
+<div class="box">
+  <div class="t">1 · Pedido</div>
+  <label for="pedido">Cole aqui a mensagem do pedido</label>
+  <textarea id="pedido" placeholder="Toque e segure → Colar" oninput="lerPedido()"></textarea>
+  <button class="btn b-gry" onclick="colarPedido()">📋 Colar do WhatsApp</button>
+  <div class="row" style="margin-top:4px">
+    <div><label for="p-id">Pedido #</label><input id="p-id" oninput="calcular()"></div>
+    <div><label for="p-sub">Produtos (R$)</label><input id="p-sub" inputmode="decimal" oninput="calcular()"></div>
+  </div>
+  <label for="p-nome">Cliente</label>
+  <input id="p-nome" oninput="calcular()">
+  <label for="p-end">Endereço</label>
+  <input id="p-end" oninput="calcular()">
+</div>
+
+<!-- 2. DISTÂNCIA -->
+<div class="box">
+  <div class="t">2 · Distância</div>
+  <button class="btn b-org" onclick="abrirRota()">🗺️ Ver rota no Google Maps</button>
+  <div class="info" id="rota-info"></div>
+  <label for="km">Km da rota (como aparece no Maps)</label>
+  <input id="km" inputmode="decimal" placeholder="Ex: 3,4" oninput="calcular()">
+  <label>Tabela</label>
+  <div class="seg" id="seg-tab">
+    <button data-v="normal" onclick="setTabela('normal')">☀️ Normal</button>
+    <button data-v="chuva" onclick="setTabela('chuva')">🌧️ Chuva / Domingo</button>
+  </div>
+  <label>Pagamento</label>
+  <div class="seg" id="seg-pag">
+    <button data-v="pix" onclick="setPag('pix')">⚡ Pix</button>
+    <button data-v="cartao" onclick="setPag('cartao')">💳 Cartão na entrega</button>
+  </div>
+  <label for="manual">Valor manual da entrega (opcional, substitui a tabela)</label>
+  <input id="manual" inputmode="decimal" placeholder="Deixe vazio para usar a tabela" oninput="calcular()">
+</div>
+
+<!-- 3. RESULTADO -->
+<div class="box">
+  <div class="t">3 · Resposta para o cliente</div>
+  <div class="res">
+    <div class="rl"><span>Produtos</span><b id="r-sub">—</b></div>
+    <div class="rl"><span id="r-frete-lbl">Entrega</span><b id="r-frete">—</b></div>
+    <div class="rl tot"><span>Total</span><b id="r-total">—</b></div>
+  </div>
+  <div id="r-alerta"></div>
+  <button class="btn b-grn" id="btn-copiar" onclick="copiarResposta()">📋 Copiar resposta</button>
+  <button class="btn b-gry" id="btn-share" onclick="compartilhar()" style="display:none">📤 Enviar pelo WhatsApp…</button>
+  <button class="btn b-gry" id="btn-pix" onclick="copiarSoPix()">Copiar só o código Pix</button>
+  <div class="prev" id="preview">Preencha o pedido e os km.</div>
+  <button class="btn b-gry" onclick="limpar()" style="margin-top:16px">🧹 Novo pedido</button>
+</div>
+
+<!-- TABELA -->
+<div class="box">
+  <div class="t">Tabela Decola Entregas</div>
+  <div class="info" id="tab-fonte" style="margin-top:0"></div>
+  <table id="tabela"></table>
+  <div class="info">Km arredondado para cima (3,1 km = faixa 4). Acima de 12 km: fora do raio, combinar.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════
+   CONFIGURAÇÃO — mesma planilha do site
+   ════════════════════════════════════════════ */
+const SHEETS_ID = '1VYGCspGLGM0YXzluC6O4BZAW5uvL5dhTw14q3DwABxg';
+
+/* Tabela da Decola Entregas (conferida em 23/10/2026).
+   Colunas: km, Pix normal (sem retorno), Cartão normal (com retorno),
+            Pix chuva/domingo, Cartão chuva/domingo.
+   Se a planilha tiver a aba "frete" com essas 5 colunas, ela substitui esta tabela. */
+const TABELA_PADRAO = [
+  [1,  6,  8,  8, 10],
+  [2,  7,  9,  9, 11],
+  [3,  8, 10, 10, 12],
+  [4,  9, 12, 11, 14],
+  [5, 10, 13, 12, 15],
+  [6, 11, 15, 13, 16],
+  [7, 13, 16, 15, 18],
+  [8, 14, 17, 16, 19],
+  [9, 15, 18, 17, 20],
+  [10,16, 20, 18, 22],
+  [11,17, 21, 19, 23],
+  [12,18, 22, 20, 24],
+];
+const RAIO_MAX_KM = 12;
+
+let CFG = {
+  pixChave:  '126bc16c-7ecd-4018-8c09-d19895b1fd1a',
+  pixNome:   'LEONARDO P GIUSTI',
+  pixCidade: 'INDAIATUBA',
+  tarifaChuva: false,
+  enderecoLoja: '',
+};
+let TABELA = TABELA_PADRAO, TABELA_FONTE = 'tabela padrão (no código)';
+let TAB = 'normal', PAG = 'pix';
+
+/* ════ utilidades ════ */
+const $ = id => document.getElementById(id);
+const fmt = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+function numBR(s){
+  s = String(s || '').replace(/[^\d.,]/g, '');
+  if (!s) return NaN;
+  if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  return Number(s);
+}
+function aviso(t){
+  const el = $('toast'); el.textContent = t; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2200);
+}
+function copiarTexto(txt, ok){
+  const feito = () => aviso(ok || '✅ Copiado!');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(feito).catch(() => fallbackCopia(txt, feito));
+  } else fallbackCopia(txt, feito);
+}
+function fallbackCopia(txt, cb){
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e){ aviso('⚠️ Copie manualmente'); }
+  document.body.removeChild(ta);
+}
+
+/* ════ Pix (mesmo gerador do site, txid sempre "***") ════ */
+function crc16(s){
+  let crc = 0xFFFF;
+  for (let i=0;i<s.length;i++){
+    crc ^= (s.charCodeAt(i) << 8);
+    for (let b=0;b<8;b++) crc = (crc & 0x8000) ? ((crc<<1)^0x1021)&0xFFFF : (crc<<1)&0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+const tlv = (id,v) => id + String(v.length).padStart(2,'0') + v;
+function montarPix(valor, infoAdicional){
+  const centavos = Math.round(Number(valor) * 100);
+  const valorStr = (centavos / 100).toFixed(2);
+  let subconta = tlv('00','br.gov.bcb.pix') + tlv('01', CFG.pixChave);
+  if (infoAdicional) {
+    const espacoLivre = 99 - subconta.length - 4;
+    const info = String(infoAdicional).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^A-Za-z0-9 .\-]/g,'').trim().substring(0, espacoLivre);
+    if (info) subconta += tlv('02', info);
+  }
+  const body = tlv('00','01') + tlv('26', subconta) + tlv('52','0000') + tlv('53','986')
+    + (centavos > 0 ? tlv('54', valorStr) : '') + tlv('58','BR')
+    + tlv('59', CFG.pixNome.substring(0,25)) + tlv('60', CFG.pixCidade.substring(0,15))
+    + tlv('62', tlv('05', '***')) + '6304';
+  return body + crc16(body);
+}
+function linkPix(total, id){
+  const base = location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '');
+  return base + 'pix.html?c=' + encodeURIComponent(montarPix(total, id ? 'PEDIDO ' + id : ''))
+    + '&v=' + encodeURIComponent(total.toFixed(2)) + '&p=' + encodeURIComponent(id || '');
+}
+
+/* ════ Leitura do pedido colado ════ */
+async function colarPedido(){
+  try {
+    const t = await navigator.clipboard.readText();
+    if (t) { $('pedido').value = t; lerPedido(); return; }
+  } catch(e){}
+  $('pedido').focus(); aviso('Toque e segure no campo → Colar');
+}
+function lerPedido(){
+  const t = $('pedido').value;
+  const m = (re) => { const r = t.match(re); return r ? r[1].trim() : ''; };
+  const id = m(/#([A-Za-z0-9]+)/);
+  let nome = m(/👤\s*\*([^*]+)\*/);
+  let end  = m(/📍\s*Endere[çc]o:\s*(.+)/);
+  if (!end) end = m(/👤\s*\*[^*]+\*\s*[—-]\s*(.+)/);          // formato antigo
+  let sub  = m(/Produtos:\s*R\$\s*([\d.,]+)/);
+  if (!sub) sub = m(/TOTAL:\s*R\$\s*([\d.,]+)/);              // formato antigo
+  const pag = m(/Pagamento:\s*\*([^*]+)\*/);
+  if (id) $('p-id').value = id;
+  if (nome) $('p-nome').value = nome;
+  if (end) $('p-end').value = end;
+  if (sub) $('p-sub').value = sub;
+  if (pag) setPag(/cart/i.test(pag) ? 'cartao' : 'pix', true);
+  calcular();
+}
+
+/* ════ Rota no Maps (link gratuito do Google Maps, sem API) ════ */
+function abrirRota(){
+  const end = $('p-end').value.trim();
+  if (!end){ aviso('Cole o pedido ou digite o endereço'); $('p-end').focus(); return; }
+  let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(end);
+  if (CFG.enderecoLoja) url += '&origin=' + encodeURIComponent(CFG.enderecoLoja);
+  window.open(url, '_blank');
+}
+
+/* ════ Cálculo ════ */
+function setTabela(v){ TAB = v; marcarSeg('seg-tab', v); calcular(); }
+function setPag(v, silencioso){ PAG = v; marcarSeg('seg-pag', v); if (!silencioso) calcular(); }
+function marcarSeg(id, v){
+  document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+}
+function faixaKm(km){
+  if (!(km > 0)) return null;
+  return Math.max(1, Math.ceil(Math.round(km * 10) / 10 - 1e-9));
+}
+function valorTabela(faixa){
+  const linha = TABELA.find(r => r[0] === faixa);
+  if (!linha) return null;
+  const col = (TAB === 'chuva' ? 3 : 1) + (PAG === 'cartao' ? 1 : 0);
+  return linha[col];
+}
+
+let ULTIMO = null;
+function calcular(){
+  const sub = numBR($('p-sub').value);
+  const km  = numBR($('km').value);
+  const manual = numBR($('manual').value);
+  const faixa = faixaKm(km);
+  let frete = null, alerta = '', lbl = 'Entrega';
+
+  if (manual > 0) {
+    frete = manual; lbl = 'Entrega (valor manual)';
+  } else if (faixa) {
+    if (faixa > RAIO_MAX_KM) {
+      alerta = 'Fora do raio: ' + String(km).replace('.', ',') + ' km (máx. ' + RAIO_MAX_KM + ' km). Combine o valor com o cliente e o motoboy e digite em "Valor manual".';
+    } else {
+      frete = valorTabela(faixa);
+      lbl = 'Entrega (' + String(km).replace('.', ',') + ' km → faixa ' + faixa + ')';
+    }
+  }
+  desenharTabela(faixa);
+
+  $('r-sub').textContent = sub > 0 ? fmt(sub) : '—';
+  $('r-frete-lbl').textContent = lbl;
+  $('r-frete').textContent = frete !== null ? fmt(frete) : '—';
+  const total = (sub > 0 && frete !== null) ? Math.round(sub * 100 + frete * 100) / 100 : null;
+  $('r-total').textContent = total !== null ? fmt(total) : '—';
+  $('r-alerta').innerHTML = alerta ? '<div class="alerta">' + alerta + '</div>' : '';
+
+  if (total === null) {
+    ULTIMO = null;
+    $('preview').textContent = sub > 0 ? 'Informe os km da rota.' : 'Preencha o pedido e os km.';
+    return;
+  }
+  const id = $('p-id').value.trim();
+  const nome = ($('p-nome').value.trim().split(' ')[0]) || '';
+  const kmTxt = (manual > 0 || !faixa) ? '' : ' (' + String(km).replace('.', ',') + ' km)';
+  let msg = 'Olá' + (nome ? ', ' + nome : '') + '! Seu pedido' + (id ? ' #' + id : '') + ' ficou assim:\n\n'
+    + '🍔 Produtos: ' + fmt(sub) + '\n'
+    + '🛵 Entrega: ' + fmt(frete) + kmTxt + '\n'
+    + '💰 *Total: ' + fmt(total) + '*\n\n';
+  if (PAG === 'pix') {
+    msg += 'Pague pelo Pix neste link (o valor já vem certinho):\n' + linkPix(total, id) + '\n\n'
+      + 'Depois é só mandar o comprovante aqui que já começamos o preparo 🔥';
+  } else {
+    msg += 'O pagamento será no cartão (débito ou crédito) na entrega. Pedido confirmado, já vamos preparar! 🔥';
+  }
+  ULTIMO = { msg, total, id };
+  $('preview').textContent = msg;
+}
+
+function copiarResposta(){
+  if (!ULTIMO){ aviso('Falta produtos ou km'); return; }
+  copiarTexto(ULTIMO.msg, '✅ Resposta copiada! Cole no WhatsApp');
+}
+function compartilhar(){
+  if (!ULTIMO){ aviso('Falta produtos ou km'); return; }
+  navigator.share({ text: ULTIMO.msg }).catch(() => {});
+}
+function copiarSoPix(){
+  if (!ULTIMO){ aviso('Falta produtos ou km'); return; }
+  if (PAG !== 'pix'){ aviso('Pedido no cartão: sem Pix'); return; }
+  copiarTexto(montarPix(ULTIMO.total, ULTIMO.id ? 'PEDIDO ' + ULTIMO.id : ''), '✅ Código Pix copiado');
+}
+function limpar(){
+  ['pedido','p-id','p-sub','p-nome','p-end','km','manual'].forEach(id => $(id).value = '');
+  setPag('pix', true);
+  setTabela(tabelaDoDia());
+  window.scrollTo(0, 0);
+}
+
+function desenharTabela(faixaSel){
+  const cab = '<tr><th>km</th><th>Pix<br>normal</th><th>Cartão<br>normal</th><th>Pix<br>chuva/dom</th><th>Cartão<br>chuva/dom</th></tr>';
+  $('tabela').innerHTML = cab + TABELA.map(r =>
+    '<tr class="' + (r[0] === faixaSel ? 'sel' : '') + '"><td>' + r[0] + '</td>'
+    + r.slice(1).map(v => '<td>' + Number(v).toFixed(2).replace('.', ',') + '</td>').join('') + '</tr>'
+  ).join('');
+  $('tab-fonte').textContent = 'Fonte: ' + TABELA_FONTE;
+}
+
+/* Domingo (no relógio do celular) ou chave "tarifaChuva" = true na planilha → tabela de chuva */
+function tabelaDoDia(){ return (new Date().getDay() === 0 || CFG.tarifaChuva) ? 'chuva' : 'normal'; }
+
+/* ════ Carrega a planilha (config + aba opcional "frete") ════ */
+async function gviz(aba){
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEETS_ID + '/gviz/tq?tqx=out:json&headers=1&sheet=' + encodeURIComponent(aba);
+  const txt = await (await fetch(url)).text();
+  return JSON.parse(txt.match(/setResponse\(([\s\S]*)\)/)[1]).table;
+}
+const cel = c => (c && c.v !== null && c.v !== undefined) ? c.v : null;
+const verdadeiro = v => ['true','verdadeiro','1','sim'].indexOf(String(v).trim().toLowerCase()) >= 0;
+
+async function carregar(){
+  let status = [];
+  try {
+    const t = await gviz('config');
+    const d = {};
+    (t.rows || []).forEach(r => { if (r.c && cel(r.c[0]) !== null) d[String(cel(r.c[0])).trim()] = cel(r.c[1]); });
+    if (d.pixChave)  CFG.pixChave  = String(d.pixChave).trim();
+    if (d.pixNome)   CFG.pixNome   = String(d.pixNome).trim();
+    if (d.pixCidade) CFG.pixCidade = String(d.pixCidade).trim();
+    if (d.enderecoLoja) CFG.enderecoLoja = String(d.enderecoLoja).trim();
+    CFG.tarifaChuva = d.tarifaChuva !== null && d.tarifaChuva !== undefined && verdadeiro(d.tarifaChuva);
+    status.push('planilha ✓');
+  } catch(e){ status.push('planilha ✗ (usando padrão)'); }
+  try {
+    const t = await gviz('frete');
+    const cab = (t.cols || []).map(c => String(c.label || '').toLowerCase());
+    const linhas = (t.rows || []).map(r => (r.c || []).slice(0,5).map(cel).map(Number))
+      .filter(r => r.length === 5 && r.every(v => isFinite(v) && v > 0));
+    if (cab[0] && cab[0].indexOf('km') === 0 && linhas.length >= 1) {
+      TABELA = linhas.sort((a,b) => a[0]-b[0]); TABELA_FONTE = 'aba "frete" da planilha';
+    }
+  } catch(e){}
+  $('cfg-status').innerHTML = status.join(' · ') + '<br>' + (CFG.tarifaChuva ? '🌧️ chuva ligada' : (new Date().getDay() === 0 ? '📅 domingo' : '☀️ normal'));
+  $('rota-info').textContent = CFG.enderecoLoja
+    ? 'Origem: ' + CFG.enderecoLoja
+    : 'Origem: sua localização atual (cadastre "enderecoLoja" na planilha para fixar).';
+  setTabela(tabelaDoDia());
+}
+
+if (navigator.share) $('btn-share').style.display = 'block';
+setPag('pix', true);
+desenharTabela(null);
+carregar();
+</script>
+</body>
+</html>

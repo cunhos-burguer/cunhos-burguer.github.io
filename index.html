@@ -85,6 +85,30 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
 .ifield:focus{ border-color:var(--orange); }
 .ifield::placeholder{ color:#444; }
 
+/* ENDEREÇO / PAGAMENTO / RESUMO */
+.row2{ display:flex; gap:10px; }
+.cep-msg{ font-size:11px; color:#777; min-height:0; }
+.cep-msg.err{ color:var(--red); }
+.cep-msg.ok{ color:#4ade80; }
+.pagopts{ display:flex; flex-direction:column; gap:8px; }
+.pagopt{ display:flex; align-items:center; gap:12px; background:var(--card); border:2px solid var(--border);
+         border-radius:13px; padding:14px; cursor:pointer; }
+.pagopt.on{ border-color:var(--orange); background:rgba(255,107,0,.08); }
+.pagopt .rd{ width:20px; height:20px; border-radius:50%; border:2px solid #444; flex-shrink:0;
+             display:flex; align-items:center; justify-content:center; }
+.pagopt.on .rd{ border-color:var(--orange); }
+.pagopt.on .rd::after{ content:''; width:10px; height:10px; border-radius:50%; background:var(--orange); }
+.pagopt .pt{ font-size:14px; font-weight:700; }
+.pagopt .pd{ font-size:11px; color:#777; margin-top:3px; line-height:1.4; }
+.resumo{ background:var(--card); border:1px solid var(--border); border-radius:13px; padding:14px 15px;
+         display:flex; flex-direction:column; gap:8px; }
+.rl{ display:flex; justify-content:space-between; gap:10px; font-size:13px; color:#bbb; }
+.rl span:last-child{ white-space:nowrap; font-weight:600; color:#fff; }
+.rl.rt{ border-top:1px solid var(--border); padding-top:9px; font-size:15px; font-weight:700; color:#fff; }
+.rl.rt span:last-child{ color:var(--orange); }
+.res-nota{ font-size:11.5px; color:#999; line-height:1.5; }
+.res-nota:empty{ display:none; }
+
 /* TELA DE MONTAGEM */
 .mont{ display:none; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; }
 .mont.show{ display:flex; }
@@ -345,15 +369,58 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
       <div class="ilabel">Nome completo</div>
       <input class="ifield" type="text" id="cli-nome" placeholder="Seu nome">
     </div>
+  </div>
+</div>
+
+<!-- ENDEREÇO DE ENTREGA -->
+<div class="section">
+  <div class="stitle">📍 Endereço de entrega</div>
+  <div class="igroup">
     <div class="iwrap">
-      <div class="ilabel">Rua e número</div>
-      <input class="ifield" type="text" id="cli-end" placeholder="Ex: Rua das Flores, 142">
+      <div class="ilabel">CEP <span style="color:#444;text-transform:none;letter-spacing:0">— preenche rua e bairro</span></div>
+      <input class="ifield" type="text" id="cli-cep" inputmode="numeric" maxlength="9" placeholder="13330-000" oninput="cepDigitado(this)">
+      <div class="cep-msg" id="cep-msg"></div>
+    </div>
+    <div class="iwrap">
+      <div class="ilabel">Rua</div>
+      <input class="ifield" type="text" id="cli-rua" placeholder="Ex: Rua das Flores" oninput="enderecoMudou()">
+    </div>
+    <div class="row2">
+      <div class="iwrap" style="flex:0 0 34%">
+        <div class="ilabel">Número</div>
+        <input class="ifield" type="text" id="cli-num" inputmode="numeric" placeholder="142" oninput="enderecoMudou()">
+      </div>
+      <div class="iwrap" style="flex:1;min-width:0">
+        <div class="ilabel">Bairro</div>
+        <input class="ifield" type="text" id="cli-bairro" placeholder="Ex: Centro" oninput="enderecoMudou()">
+      </div>
+    </div>
+    <div class="iwrap">
+      <div class="ilabel">Complemento / referência (opcional)</div>
+      <input class="ifield" type="text" id="cli-comp" placeholder="Apto, bloco, portão azul…">
     </div>
   </div>
 </div>
 
+<!-- FORMA DE PAGAMENTO -->
+<div class="section">
+  <div class="stitle">💳 Pagamento</div>
+  <div class="pagopts" id="pagopts"></div>
+</div>
+
+<!-- RESUMO -->
+<div class="section" id="sec-resumo" style="display:none">
+  <div class="stitle">🧾 Resumo</div>
+  <div class="resumo">
+    <div class="rl"><span>Produtos</span><span id="res-sub">R$0,00</span></div>
+    <div class="rl"><span id="res-frete-lbl">🛵 Entrega</span><span id="res-frete">—</span></div>
+    <div class="rl rt"><span>Total</span><span id="res-total">R$0,00</span></div>
+    <div class="res-nota" id="res-nota"></div>
+  </div>
+</div>
+
 <div class="bar">
-  <div><div class="tl">Total</div><div class="tv" id="total">R$0,00</div></div>
+  <div><div class="tl" id="total-lbl">Total</div><div class="tv" id="total">R$0,00</div></div>
   <button class="pay" id="btn-pay" onclick="abrirPagamento()" disabled>📲 Enviar Pedido</button>
 </div>
 
@@ -403,7 +470,7 @@ const CONFIG_PADRAO = {
   proximoDia:       'Amanhã',
   horaPedidos:      '18h',
   horaEntregas:     '19h',
-  whatsapp:         '5511975798062',
+  whatsapp:         '5511989095335',
   estoque: {
     xcunhos: null, tradicional: null, bacon: null, duplo: null,
     coca: null, sprite: null, acai_p: null, acai_g: null,
@@ -428,11 +495,14 @@ const CONFIG_PADRAO = {
   pixChave:  '126bc16c-7ecd-4018-8c09-d19895b1fd1a',
   pixNome:   'LEONARDO P GIUSTI',
   pixCidade: 'INDAIATUBA',
+  freteUrl:     '',     // URL do App da Web do Apps Script (vazio = frete confirmado pela equipe)
+  aceitaCartao: false,  // true = mostra "Cartão na entrega"
 };
 
 /* ════ VARIÁVEIS GLOBAIS (preenchidas após carregar config) ════ */
 let WHATSAPP, LOJA_FECHADA, APENAS_ACAI, PROXIMO_DIA, HORA_PEDIDOS, HORA_ENTREGAS, MOSTRAR_PIX_NA_TELA;
 let ESTOQUE, ESTOQUE_VARIANTE, ESTOQUE_CARNE, PIX_CHAVE, PIX_NOME, PIX_CIDADE, MENSAGEM_ATIVA;
+let FRETE_URL = '', ACEITA_CARTAO = false;
 let currentPixId = null; // ID do pedido atual — gerado em abrirPagamento(), usado no Pix e no WhatsApp
 let PRODUCTS, ADICIONAIS, TOPPINGS;
 
@@ -450,13 +520,16 @@ function aplicarConfig(C) {
   HORA_PEDIDOS        = C.horaPedidos;
   HORA_ENTREGAS       = C.horaEntregas;
   MOSTRAR_PIX_NA_TELA = C.mostrarPixNaTela;
-  MENSAGEM_ATIVA      = C.mensagens[C.mensagemAtiva - 1];
+  MENSAGEM_ATIVA      = (C.mensagens && C.mensagens[(C.mensagemAtiva || 1) - 1])
+                        || { icone:'😴', titulo:'VOLTAMOS EM BREVE', texto:'Estamos fechados agora. Volte mais tarde! 🍔' };
   ESTOQUE             = C.estoque;
   ESTOQUE_VARIANTE    = C.estoqueSabor;
   ESTOQUE_CARNE       = C.estoqueCarne;
   PIX_CHAVE           = C.pixChave;
   PIX_NOME            = C.pixNome;
   PIX_CIDADE          = C.pixCidade;
+  FRETE_URL           = C.freteUrl || '';
+  ACEITA_CARTAO       = !!C.aceitaCartao;
 
   PRODUCTS = {
     xcunhos: { id:'xcunhos', name:"X-Cunho's", emoji:'🍔', base:C.precos.xcunhos, up180:C.upgrade180,
@@ -542,7 +615,7 @@ function parsearPlanilha(d) {
     proximoDia:       str(d.proximoDia, 'Amanhã'),
     horaPedidos:      str(d.horaPedidos, '18h'),
     horaEntregas:     str(d.horaEntregas, '19h'),
-    whatsapp:         str(d.whatsapp, '5511975798062'),
+    whatsapp:         str(d.whatsapp, '5511989095335'),
     estoque: {
       xcunhos:     nNull(d.estoque_xcunhos),
       tradicional: nNull(d.estoque_tradicional),
@@ -594,6 +667,8 @@ function parsearPlanilha(d) {
     pixChave:  str(d.pixChave, '126bc16c-7ecd-4018-8c09-d19895b1fd1a'),
     pixNome:   str(d.pixNome, 'LEONARDO P GIUSTI'),
     pixCidade: str(d.pixCidade, 'INDAIATUBA'),
+    freteUrl:     str(d.freteUrl, '').trim(),
+    aceitaCartao: bool(d.aceitaCartao, false),
     mensagemAtiva: Math.max(1, Math.min(4, parseInt(d.mensagemAtiva) || 1)),
     mensagens: [
       {
@@ -875,7 +950,6 @@ function removerItem(id){ order = order.filter(i => i.uid !== id); render(); }
 const totalPedido = () => order.reduce((s,i) => s + i.preco, 0);
 function render(){
   document.getElementById('empty').style.display = order.length ? 'none' : 'block';
-  document.getElementById('total').textContent = fmt(totalPedido());
   document.getElementById('btn-pay').disabled = order.length === 0;
   document.getElementById('olist').innerHTML = order.map((it,idx) => {
     const t = it.p.type;
@@ -916,6 +990,7 @@ function render(){
       + '</div></div>';
   }).join('');
   aplicarEstoque();
+  atualizarResumo();
 }
 
 /* ════ PIX ════ */
@@ -984,7 +1059,7 @@ function montarPix(valor, txid, infoAdicional){
 }
 
 function atualizarPix(){
-  const total = totalPedido();
+  const total = totalFinal();
   const el = document.getElementById('pay-total');
   if (el) el.textContent = fmt(total);
   if (total <= 0 || typeof qrcode === 'undefined'){
@@ -1009,57 +1084,247 @@ function copiarPix(){
     .catch(() => aviso('⚠️<br>Copie<br>manualmente'));
 }
 
+/* ════ ENDEREÇO, FRETE E FORMA DE PAGAMENTO ════
+   Frete:
+   - Se a chave "freteUrl" da planilha estiver VAZIA, a entrega fica
+     "a confirmar pela equipe" e o pedido vai sem Pix (a equipe usa o equipe.html).
+   - Se tiver a URL do App da Web (Apps Script), o site pede o km e a taxa
+     a ele. Qualquer falha volta para "a confirmar" — nunca inventa valor.
+   ═══════════════════════════════════════════════ */
+let FRETE = { status:'manual' };   // manual | calculando | ok | fora | erro
+let PAGAMENTO = 'pix';             // pix | cartao
+let CIDADE_ENTREGA = 'Indaiatuba-SP';
+let freteTimer = null, freteSeq = 0, ultimaConsultaFrete = '';
+let enviando = false;
+
+const normTxt = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const valorCampo = id => (document.getElementById(id).value || '').trim();
+const freteDefinido = () => FRETE.status === 'ok';
+const centavos = v => Math.round(Number(v) * 100);
+const totalFinal = () => (centavos(totalPedido()) + (freteDefinido() ? centavos(FRETE.valor) : 0)) / 100;
+const fmtKm = km => String(km).replace('.', ',');
+
+function cepDigitado(el){
+  const v = el.value.replace(/\D/g,'').slice(0,8);
+  el.value = v.length > 5 ? v.slice(0,5) + '-' + v.slice(5) : v;
+  const msg = document.getElementById('cep-msg');
+  msg.className = 'cep-msg'; msg.textContent = '';
+  if (v.length === 8) buscarCep(v);
+}
+
+async function buscarCep(cep){
+  const msg = document.getElementById('cep-msg');
+  msg.className = 'cep-msg'; msg.textContent = 'Buscando endereço…';
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/', { signal: ctrl.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (!d || d.erro) throw new Error('CEP não encontrado');
+    if (d.logradouro) document.getElementById('cli-rua').value = d.logradouro;
+    if (d.bairro)     document.getElementById('cli-bairro').value = d.bairro;
+    CIDADE_ENTREGA = (d.localidade || 'Indaiatuba') + '-' + (d.uf || 'SP');
+    if (normTxt(d.localidade) !== 'indaiatuba') {
+      msg.className = 'cep-msg err';
+      msg.textContent = 'Esse CEP é de ' + d.localidade + '. A equipe confirma a entrega no WhatsApp.';
+    } else {
+      msg.className = 'cep-msg ok';
+      msg.textContent = d.logradouro ? '✓ Confira a rua e informe o número' : '✓ CEP geral da cidade: preencha a rua e o bairro';
+    }
+    const alvo = d.logradouro ? 'cli-num' : 'cli-rua';
+    document.getElementById(alvo).focus();
+  } catch (e) {
+    msg.className = 'cep-msg err';
+    msg.textContent = 'Não achamos esse CEP. Preencha rua e bairro abaixo.';
+  }
+  enderecoMudou();
+}
+
+function enderecoTexto(){
+  const cep = valorCampo('cli-cep');
+  return valorCampo('cli-rua') + ', ' + valorCampo('cli-num') + ' - ' + valorCampo('cli-bairro')
+       + ', ' + CIDADE_ENTREGA.replace('-', ' - ') + (cep ? ', ' + cep : '') + ', Brasil';
+}
+
+function enderecoMudou(){
+  clearTimeout(freteTimer);
+  if (!FRETE_URL) { atualizarResumo(); return; }
+  freteTimer = setTimeout(calcularFrete, 900);
+}
+
+async function calcularFrete(){
+  if (!FRETE_URL) { FRETE = { status:'manual' }; atualizarResumo(); return; }
+  if (!valorCampo('cli-rua') || !valorCampo('cli-num') || !valorCampo('cli-bairro')) {
+    FRETE = { status:'manual' }; ultimaConsultaFrete = ''; atualizarResumo(); return;
+  }
+  const end = enderecoTexto();
+  const chave = end + '|' + PAGAMENTO;
+  if (chave === ultimaConsultaFrete && FRETE.status !== 'erro') return;
+  ultimaConsultaFrete = chave;
+  const seq = ++freteSeq;
+  FRETE = { status:'calculando' }; atualizarResumo();
+  try {
+    const url = FRETE_URL + (FRETE_URL.indexOf('?') >= 0 ? '&' : '?')
+      + 'end=' + encodeURIComponent(end) + '&pag=' + PAGAMENTO;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (seq !== freteSeq) return;
+    if (d && d.ok && typeof d.valor === 'number' && d.valor > 0) {
+      FRETE = { status:'ok', km:d.km, valor:d.valor, tabela:d.tabela || '' };
+    } else if (d && d.fora) {
+      FRETE = { status:'fora', km:d.km };
+    } else {
+      FRETE = { status:'erro' };
+    }
+  } catch (e) {
+    if (seq !== freteSeq) return;
+    FRETE = { status:'erro' };
+  }
+  atualizarResumo();
+}
+
+function desenharPagamentos(){
+  const opcoes = [
+    { id:'pix', t:'⚡ Pix antecipado', d:'Você paga pelo Pix antes do preparo.' },
+  ];
+  if (ACEITA_CARTAO) opcoes.push({ id:'cartao', t:'💳 Cartão na entrega', d:'Débito ou crédito na maquininha, com o entregador.' });
+  if (!opcoes.find(o => o.id === PAGAMENTO)) PAGAMENTO = 'pix';
+  document.getElementById('pagopts').innerHTML = opcoes.map(o =>
+    '<div class="pagopt ' + (PAGAMENTO === o.id ? 'on' : '') + '" onclick="setPagamento(\'' + o.id + '\')">'
+    + '<div class="rd"></div><div><div class="pt">' + o.t + '</div><div class="pd">' + o.d + '</div></div></div>'
+  ).join('');
+}
+function setPagamento(p){
+  if (PAGAMENTO === p) return;
+  PAGAMENTO = p;
+  desenharPagamentos();
+  if (FRETE_URL) { ultimaConsultaFrete = ''; calcularFrete(); } else atualizarResumo();
+}
+
+function atualizarResumo(){
+  const sub = totalPedido();
+  document.getElementById('sec-resumo').style.display = order.length ? 'block' : 'none';
+  document.getElementById('res-sub').textContent = fmt(sub);
+  let lbl = '🛵 Entrega', val = 'a confirmar', nota = '';
+  if (FRETE.status === 'ok') {
+    lbl = '🛵 Entrega (' + fmtKm(FRETE.km) + ' km)'; val = fmt(FRETE.valor);
+  } else if (FRETE.status === 'calculando') {
+    val = 'calculando…';
+  } else if (FRETE.status === 'fora') {
+    val = 'a combinar';
+    nota = 'Seu endereço fica fora do nosso raio de entrega. Envie o pedido que a equipe combina com você no WhatsApp.';
+  } else {
+    nota = PAGAMENTO === 'pix'
+      ? 'A equipe confirma a taxa de entrega no WhatsApp e envia o Pix com o total. Não pague antes disso.'
+      : 'A equipe confirma a taxa de entrega no WhatsApp.';
+  }
+  document.getElementById('res-frete-lbl').textContent = lbl;
+  document.getElementById('res-frete').textContent = val;
+  document.getElementById('res-total').textContent = freteDefinido() ? fmt(totalFinal()) : fmt(sub) + ' + entrega';
+  document.getElementById('res-nota').textContent = nota;
+  document.getElementById('total-lbl').textContent = freteDefinido() ? 'Total' : 'Produtos';
+  document.getElementById('total').textContent = fmt(freteDefinido() ? totalFinal() : sub);
+}
+
 /* ════ PAGAMENTO ════ */
+function passosHtml(passos){
+  return '<div class="steps">' + passos.map((p,i) =>
+    '<div class="step"><div class="step-n">' + (i+1) + '</div><div class="step-txt">' + p + '</div></div>'
+  ).join('') + '</div>';
+}
+
 function abrirPagamento(){
   if (LOJA_FECHADA && !APENAS_ACAI){ aviso('😴<br>Encerramos<br>por hoje'); return; }
-  const nome = document.getElementById('cli-nome').value.trim();
-  const end  = document.getElementById('cli-end').value.trim();
   if (!order.length){ aviso('🛒<br>Adicione itens<br>ao seu pedido'); return; }
-  if (!nome){ aviso('👤<br>Informe seu nome<br>para continuar'); document.getElementById('cli-nome').focus(); return; }
-  if (!end) { aviso('📍<br>Informe seu endereço<br>para continuar'); document.getElementById('cli-end').focus(); return; }
+  const faltando = [
+    ['cli-nome','👤<br>Informe seu nome<br>para continuar'],
+    ['cli-rua','📍<br>Informe a rua<br>da entrega'],
+    ['cli-num','📍<br>Informe o número<br>da casa'],
+    ['cli-bairro','📍<br>Informe o bairro<br>da entrega'],
+  ].find(([id]) => !valorCampo(id));
+  if (faltando){ aviso(faltando[1]); document.getElementById(faltando[0]).focus(); return; }
+  if (FRETE.status === 'calculando'){ aviso('⏳<br>Calculando a entrega…<br>um instante'); return; }
 
-  // Gera o ID do pedido uma única vez — usado no txid do Pix e na mensagem do WhatsApp
+  // Gera o ID do pedido uma única vez — usado na mensagem do WhatsApp e no Pix
   currentPixId = gerarIdPedido();
+  const comPix = PAGAMENTO === 'pix' && freteDefinido();
+  const linhaTotal = freteDefinido()
+    ? '<div class="pay-tl">Total com entrega</div><div class="pay-total" id="pay-total">' + fmt(totalFinal()) + '</div>'
+    : '<div class="pay-tl">Produtos</div><div class="pay-total" id="pay-total">' + fmt(totalPedido()) + '</div>'
+      + '<div class="pay-note" style="margin-top:-8px">+ entrega a confirmar pela equipe</div>';
 
-  if (MOSTRAR_PIX_NA_TELA) {
+  let html;
+  if (comPix && MOSTRAR_PIX_NA_TELA) {
     // Modo desktop/tablet: mostra QR na tela para escanear com outro celular
-    document.getElementById('pay-body').innerHTML =
-      '<div class="pay-step">Passo 1 · Pague com Pix</div>'
-      + '<div class="pay-tl">Valor do pedido</div>'
-      + '<div class="pay-total" id="pay-total">'+fmt(totalPedido())+'</div>'
+    html = '<div class="pay-step">Passo 1 · Pague com Pix</div>'
+      + linhaTotal
       + '<div class="pay-qr"><div id="pix-qr"></div></div>'
       + '<div class="pay-hint">Escaneie com o app do banco ou copie o código</div>'
       + '<button class="pay-copy" onclick="copiarPix()">📋 Copiar código Pix</button>'
       + '<div class="code-hidden" id="pix-code"></div>'
       + '<div class="pay-div"><span>DEPOIS DE PAGAR</span></div>'
       + '<div class="pay-step">Passo 2 · Envie o pedido</div>'
-      + '<div class="pay-note" style="margin-bottom:8px">O WhatsApp vai abrir com o código Pix dentro da mensagem 👇</div>'
       + '<button class="pay-send" onclick="enviarPedido()">📲 Enviar pedido no WhatsApp</button>'
       + '<div class="pay-note">Envie também o comprovante na mesma conversa 📸</div>';
-    atualizarPix();
-  } else {
-    // Modo mobile: o Pix vai direto na mensagem do WhatsApp — fluxo em 1 toque
-    document.getElementById('pay-body').innerHTML =
-      '<div class="big-icon">📲</div>'
+  } else if (comPix) {
+    // Modo mobile: o Pix (já com a entrega) vai direto na mensagem do WhatsApp
+    html = '<div class="big-icon">📲</div>'
       + '<div class="pay-step" style="text-align:center">Tudo pronto!</div>'
-      + '<div class="steps">'
-      +   '<div class="step"><div class="step-n">1</div>'
-      +   '<div class="step-txt">Toque abaixo — o WhatsApp vai abrir com o pedido e o <b>código Pix dentro da mensagem</b></div></div>'
-      +   '<div class="step"><div class="step-n">2</div>'
-      +   '<div class="step-txt"><b>Copie o código Pix</b> da conversa e pague no seu banco</div></div>'
-      +   '<div class="step"><div class="step-n">3</div>'
-      +   '<div class="step-txt">Compartilhe o <b>comprovante</b> na mesma conversa do WhatsApp</div></div>'
-      + '</div>'
+      + linhaTotal
+      + passosHtml([
+          'Toque abaixo — o WhatsApp vai abrir com o pedido e o <b>link do Pix</b>',
+          '<b>Copie o código Pix</b> e pague no seu banco',
+          'Envie o <b>comprovante</b> na mesma conversa',
+        ])
       + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido com Pix</button>';
+  } else if (PAGAMENTO === 'pix') {
+    // Pix, mas a entrega ainda não tem valor: a equipe manda o Pix com o total
+    html = '<div class="big-icon">🛵</div>'
+      + '<div class="pay-step" style="text-align:center">Quase lá!</div>'
+      + linhaTotal
+      + passosHtml([
+          'Toque abaixo para <b>enviar o pedido</b> no WhatsApp',
+          'A equipe confirma a <b>taxa de entrega</b> e te manda o <b>Pix com o total</b>',
+          'Pague e envie o <b>comprovante</b> na conversa',
+        ])
+      + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>'
+      + '<div class="pay-note">Não pague antes de receber o total. 🙏</div>';
+  } else {
+    // Cartão na entrega: nenhum Pix é gerado
+    html = '<div class="big-icon">💳</div>'
+      + '<div class="pay-step" style="text-align:center">Cartão na entrega</div>'
+      + linhaTotal
+      + passosHtml([
+          'Toque abaixo para <b>enviar o pedido</b> no WhatsApp',
+          freteDefinido() ? 'A equipe confirma e começa o preparo' : 'A equipe confirma a <b>taxa de entrega</b> e o total',
+          'Pague com <b>débito ou crédito</b> ao receber',
+        ])
+      + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>';
   }
+  document.getElementById('pay-body').innerHTML = html;
+  if (comPix && MOSTRAR_PIX_NA_TELA) atualizarPix();
   document.getElementById('pay-ov').classList.add('show');
 }
 function fecharPagamento(){ document.getElementById('pay-ov').classList.remove('show'); }
 
 function enviarPedido(){
-  const nome  = document.getElementById('cli-nome').value.trim();
-  const end   = document.getElementById('cli-end').value.trim();
-  const total = totalPedido();
+  if (enviando) return;            // evita pedido duplicado por toque duplo
+  enviando = true;
+  setTimeout(() => { enviando = false; }, 4000);
+
+  const nome   = valorCampo('cli-nome');
+  const rua    = valorCampo('cli-rua');
+  const num    = valorCampo('cli-num');
+  const bairro = valorCampo('cli-bairro');
+  const comp   = valorCampo('cli-comp');
+  const cep    = valorCampo('cli-cep');
+  const sub    = totalPedido();
+  const comPix = PAGAMENTO === 'pix' && freteDefinido();
+  const total  = freteDefinido() ? totalFinal() : sub;
 
   // Garante que temos um ID de pedido (pode ser chamado sem passar por abrirPagamento)
   if (!currentPixId) currentPixId = gerarIdPedido();
@@ -1068,7 +1333,10 @@ function enviarPedido(){
   // ─── Monta o texto do pedido ───────────────────────────────────────────────
   let msg = "🍔 *PEDIDO CUNHO'S BURGUER*\n";
   msg += '🔖 *Pedido #' + pedidoId + '*\n';
-  msg += '👤 *' + nome + '* — ' + end + '\n';
+  msg += '👤 *' + nome + '*\n';
+  msg += '📍 Endereço: ' + rua + ', ' + num + ' - ' + bairro + ', ' + CIDADE_ENTREGA + '\n';
+  if (cep)  msg += '📮 CEP: ' + cep + '\n';
+  if (comp) msg += '🏠 Compl.: ' + comp + '\n';
   msg += '━━━━\n\n';
   order.forEach((it,i) => {
     msg += '*' + (i+1) + '. ' + it.p.emoji + ' ' + it.p.name + '*\n';
@@ -1099,21 +1367,35 @@ function enviarPedido(){
     msg += '   💵 ' + fmt(it.preco) + '\n\n';
   });
   msg += '━━━━\n';
-  msg += '💰 *TOTAL: ' + fmt(total) + '*\n\n';
+  msg += '🧾 Produtos: ' + fmt(sub) + '\n';
+  if (freteDefinido()) {
+    msg += '🛵 Entrega: ' + fmt(FRETE.valor) + ' (' + fmtKm(FRETE.km) + ' km' + (FRETE.tabela ? ' · ' + FRETE.tabela : '') + ')\n';
+    msg += '💰 *TOTAL: ' + fmt(total) + '*\n';
+  } else {
+    msg += '🛵 Entrega: *a confirmar pela equipe*\n';
+    msg += '💰 *TOTAL: ' + fmt(sub) + ' + entrega*\n';
+  }
+  msg += '💳 Pagamento: *' + (PAGAMENTO === 'pix' ? 'Pix antecipado' : 'Cartão na entrega') + '*\n\n';
 
-  // ─── Bloco do Pix — link para página de pagamento ──────────────────────────
- const pixCode = montarPix(total, '***', 'PEDIDO ' + pedidoId);
- const pixBase = window.location.href.replace(/[^\/]*$/, '');
-  const pixUrl  = pixBase + 'pix.html'
-    + '?c=' + encodeURIComponent(pixCode)
-    + '&v=' + encodeURIComponent(total.toFixed(2))
-    + '&p=' + encodeURIComponent(pedidoId);
-  msg += '━━━━\n';
-  msg += '💳 *PAGUE COM PIX*\n';
-  msg += '_Toque no link abaixo → copie o código → abra seu banco → Pix Copia e Cola → cole:_\n\n';
-  msg += pixUrl + '\n\n';
-  msg += '📸 _Após pagar, envie o comprovante nessa conversa._\n';
-  msg += '_Só começamos a preparar depois do comprovante. Obrigado!_ 🙏';
+  if (comPix) {
+    // ─── Bloco do Pix — link para página de pagamento (total já com entrega) ──
+    const pixCode = montarPix(total, '***', 'PEDIDO ' + pedidoId);
+    const pixBase = window.location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '');
+    const pixUrl  = pixBase + 'pix.html'
+      + '?c=' + encodeURIComponent(pixCode)
+      + '&v=' + encodeURIComponent(total.toFixed(2))
+      + '&p=' + encodeURIComponent(pedidoId);
+    msg += '━━━━\n';
+    msg += '💳 *PAGUE COM PIX*\n';
+    msg += '_Toque no link abaixo → copie o código → abra seu banco → Pix Copia e Cola → cole:_\n\n';
+    msg += pixUrl + '\n\n';
+    msg += '📸 _Após pagar, envie o comprovante nessa conversa._\n';
+    msg += '_Só começamos a preparar depois do comprovante. Obrigado!_ 🙏';
+  } else if (PAGAMENTO === 'pix') {
+    msg += '⏳ _Vamos confirmar a taxa de entrega e te enviar o Pix com o total. Por favor, não pague antes disso._ 🙏';
+  } else {
+    msg += '💳 _Pagamento com cartão (débito ou crédito) na entrega._';
+  }
 
   // Abre o WhatsApp com window.location para evitar bloqueio no iOS
   fecharPagamento();
@@ -1161,6 +1443,7 @@ function aviso(msg){
     document.body.style.overflow = 'hidden';
   } else {
     desenharCards();
+    desenharPagamentos();
     render();
     if (LOJA_FECHADA && APENAS_ACAI) {
       // Hambúrguer fechado, mas açaí continua disponível
