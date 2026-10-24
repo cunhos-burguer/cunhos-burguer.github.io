@@ -377,7 +377,7 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
   <div class="stitle">📍 Endereço de entrega</div>
   <div class="igroup">
     <div class="iwrap">
-      <div class="ilabel">CEP <span style="color:#444;text-transform:none;letter-spacing:0">— preenche rua e bairro</span></div>
+      <div class="ilabel">CEP * <span style="color:#444;text-transform:none;letter-spacing:0">— preenche rua e bairro</span></div>
       <input class="ifield" type="text" id="cli-cep" inputmode="numeric" maxlength="9" placeholder="13330-000" oninput="cepDigitado(this)">
       <div class="cep-msg" id="cep-msg"></div>
     </div>
@@ -387,7 +387,7 @@ body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
     </div>
     <div class="row2">
       <div class="iwrap" style="flex:0 0 34%">
-        <div class="ilabel">Número</div>
+        <div class="ilabel">Número *</div>
         <input class="ifield" type="text" id="cli-num" inputmode="numeric" placeholder="142" oninput="enderecoMudou()">
       </div>
       <div class="iwrap" style="flex:1;min-width:0">
@@ -1240,6 +1240,9 @@ function passosHtml(passos){
 function abrirPagamento(){
   if (LOJA_FECHADA && !APENAS_ACAI){ aviso('😴<br>Encerramos<br>por hoje'); return; }
   if (!order.length){ aviso('🛒<br>Adicione itens<br>ao seu pedido'); return; }
+  if (valorCampo('cli-cep').replace(/\D/g,'').length !== 8){
+    aviso('📮<br>Informe o CEP<br>(8 números)'); document.getElementById('cli-cep').focus(); return;
+  }
   const faltando = [
     ['cli-nome','👤<br>Informe seu nome<br>para continuar'],
     ['cli-rua','📍<br>Informe a rua<br>da entrega'],
