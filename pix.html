@@ -2,9 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#111111">
 <title>Pagar com Pix — Cunho's Burguer</title>
+<!-- QR Code: mesma biblioteca e versão fixa do index.html, agora com verificação de integridade (SRI). Se não carregar, a página funciona sem o QR. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"
+        integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{
@@ -19,7 +22,7 @@ body{
   padding:24px 16px 40px;
 }
 .logo{font-size:36px;margin-bottom:4px}
-.brand{font-size:13px;letter-spacing:2px;color:#888;text-transform:uppercase;margin-bottom:32px}
+.brand{font-size:13px;letter-spacing:2px;color:#9a9a9a;text-transform:uppercase;margin-bottom:32px}
 .card{
   background:#1a1a1a;
   border:1px solid #2a2a2a;
@@ -29,139 +32,54 @@ body{
   max-width:420px;
   margin-bottom:20px;
 }
-.pedido-id{
-  font-size:12px;
-  color:#666;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  margin-bottom:6px;
-}
-.pedido-valor{
-  font-size:36px;
-  font-weight:700;
-  color:#4ade80;
-  margin-bottom:4px;
-}
-.pedido-label{font-size:14px;color:#888}
+.pedido-id{font-size:12px;color:#9a9a9a;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;word-break:break-all}
+.pedido-valor{font-size:36px;font-weight:700;color:#4ade80;margin-bottom:4px}
+.pedido-label{font-size:14px;color:#a0a0a0}
+.recebedor{margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a;font-size:13px;color:#b5b5b5;line-height:1.5}
+.recebedor b{color:#fff}
 
 .btn-copiar{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  width:100%;
-  max-width:420px;
-  padding:18px;
-  border:none;
-  border-radius:14px;
-  font-size:18px;
-  font-weight:700;
-  cursor:pointer;
-  transition:all .2s;
-  margin-bottom:16px;
-  background:#4ade80;
-  color:#111;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;max-width:420px;padding:18px;border:none;border-radius:14px;
+  font-size:18px;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:16px;
+  background:#4ade80;color:#111;
 }
 .btn-copiar:active{transform:scale(.97)}
 .btn-copiar.copiado{background:#22c55e}
+.btn-copiar.falhou{background:#facc15;font-size:15px;line-height:1.35;text-align:center}
 
+.code-label{font-size:11px;color:#8a8a8a;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;width:100%;max-width:420px}
 .code-box{
-  background:#0d0d0d;
-  border:1px solid #2a2a2a;
-  border-radius:12px;
-  padding:14px 16px;
-  width:100%;
-  max-width:420px;
-  margin-bottom:20px;
-  word-break:break-all;
-  font-size:11px;
-  font-family:'Courier New',monospace;
-  color:#555;
-  line-height:1.5;
-  user-select:all;
-  -webkit-user-select:all;
+  background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;
+  width:100%;max-width:420px;margin-bottom:20px;word-break:break-all;
+  font-size:12px;font-family:'Courier New',monospace;color:#bdbdbd;line-height:1.5;
+  user-select:all;-webkit-user-select:all;
 }
-.code-label{
-  font-size:11px;
-  color:#444;
-  margin-bottom:6px;
-  letter-spacing:1px;
-  text-transform:uppercase;
-}
+.qr-wrap{width:100%;max-width:420px;margin-bottom:20px;text-align:center;display:none}
+.qr-wrap.show{display:block}
+.qr-box{background:#fff;border-radius:14px;padding:12px;display:inline-block}
+.qr-box img{display:block;width:200px;height:200px}
+.qr-hint{font-size:12px;color:#9a9a9a;margin-top:8px}
 
-.steps{
-  width:100%;
-  max-width:420px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.step{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-.step-n{
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  background:#222;
-  border:1px solid #333;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:13px;
-  font-weight:700;
-  color:#4ade80;
-  flex-shrink:0;
-}
-.step-txt{font-size:14px;color:#aaa;line-height:1.4}
+.steps{width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px}
+.step{display:flex;align-items:center;gap:12px}
+.step-n{width:28px;height:28px;border-radius:50%;background:#222;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#4ade80;flex-shrink:0}
+.step-txt{font-size:14px;color:#b5b5b5;line-height:1.4}
 .step-txt b{color:#fff}
-
-.divider{
-  width:100%;
-  max-width:420px;
-  height:1px;
-  background:#222;
-  margin:20px 0;
-}
-.aviso{
-  width:100%;
-  max-width:420px;
-  background:#1a1a0a;
-  border:1px solid #333300;
-  border-radius:10px;
-  padding:12px 14px;
-  font-size:12px;
-  color:#aaa;
-  line-height:1.5;
-  text-align:center;
-}
+.divider{width:100%;max-width:420px;height:1px;background:#222;margin:20px 0}
+.aviso{width:100%;max-width:420px;background:#1a1a0a;border:1px solid #333300;border-radius:10px;padding:12px 14px;font-size:12px;color:#b5b5b5;line-height:1.5;text-align:center}
+.aviso.alerta{background:#2a2000;border-color:#6b5300;color:#ffe08a;margin-bottom:16px}
 
 .toast{
-  position:fixed;
-  bottom:32px;
-  left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:#4ade80;
-  color:#111;
-  font-weight:700;
-  font-size:15px;
-  padding:12px 28px;
-  border-radius:100px;
-  transition:transform .3s ease;
-  pointer-events:none;
-  white-space:nowrap;
+  position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:#4ade80;color:#111;font-weight:700;font-size:15px;padding:12px 28px;border-radius:100px;
+  transition:transform .3s ease;pointer-events:none;white-space:nowrap;
 }
 .toast.show{transform:translateX(-50%) translateY(0)}
 
-#erro{
-  color:#f87171;
-  font-size:14px;
-  text-align:center;
-  padding:40px 20px;
-  line-height:1.6;
-}
+#erro,#carregando{font-size:14px;text-align:center;padding:40px 20px;line-height:1.6;max-width:420px}
+#erro{color:#f87171}
+#carregando{color:#a0a0a0}
 </style>
 </head>
 <body>
@@ -169,129 +87,190 @@ body{
 <div class="logo">🍔</div>
 <div class="brand">Cunho's Burguer</div>
 
+<div id="carregando">Conferindo os dados do pedido…</div>
 <div id="conteudo"></div>
-<div id="erro" style="display:none">
-  Link inválido ou expirado.<br>
-  Peça um novo código no WhatsApp.
-</div>
+<div id="erro" style="display:none"></div>
 
-<div class="toast" id="toast">✅ Código copiado!</div>
+<div class="toast" id="toast" role="status" aria-live="polite">✅ Código copiado!</div>
 
 <script>
-(function(){
-  const params = new URLSearchParams(window.location.search);
-  const code   = params.get('c');
-  const valor  = params.get('v');
-  const pedido = params.get('p');
+/* ════════════════════════════════════════════════════════════════════
+   pix.html — versão reforçada (em cunhosv2; ainda NÃO publicada)
+   O link traz o código Pix (c), o valor (v) e o número do pedido (p).
+   Como qualquer pessoa pode montar um link assim, a página:
+     1) valida o código (estrutura e CRC) e o valor mostrado vem DO CÓDIGO;
+     2) confere com a planilha (somente leitura) se a chave, o nome e a cidade são os da loja;
+     3) confere se o valor do link bate com o do código;
+     4) nunca insere texto do link como HTML (tudo é escapado);
+     5) só diz "copiado" quando a cópia realmente funcionou.
+   ════════════════════════════════════════════════════════════════════ */
+const SHEETS_ID = '1VYGCspGLGM0YXzluC6O4BZAW5uvL5dhTw14q3DwABxg';
 
-  if (!code) {
-    document.getElementById('erro').style.display = 'block';
-    return;
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const brl = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+function crc16(s){
+  let crc = 0xFFFF;
+  for (let i = 0; i < s.length; i++){
+    crc ^= (s.charCodeAt(i) << 8);
+    for (let b = 0; b < 8; b++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+function lerTlv(s){
+  const campos = []; let i = 0;
+  while (i < s.length){
+    const id = s.substr(i, 2), tam = parseInt(s.substr(i + 2, 2), 10);
+    if (!/^\d{2}$/.test(id) || isNaN(tam) || i + 4 + tam > s.length) return null;
+    campos.push([id, s.substr(i + 4, tam)]); i += 4 + tam;
+  }
+  return campos;
+}
+const mapa = campos => { const m = {}; campos.forEach(([id, v]) => { if (!(id in m)) m[id] = v; }); return m; };
+
+function analisarCodigo(code){
+  if (typeof code !== 'string' || code.length < 40 || code.length > 400 || !/^[\x20-\x7E]+$/.test(code)) return null;
+  if (code.slice(-8, -4) !== '6304' || code.slice(-4).toUpperCase() !== crc16(code.slice(0, -4))) return null;
+  const campos = lerTlv(code); if (!campos) return null;
+  const m = mapa(campos);
+  const sub = m['26'] ? lerTlv(m['26']) : null; if (!sub) return null;
+  const s = mapa(sub);
+  if (m['00'] !== '01' || m['53'] !== '986' || m['58'] !== 'BR') return null;
+  if (String(s['00'] || '').toLowerCase() !== 'br.gov.bcb.pix' || !s['01']) return null;
+  const valor = Number(m['54']);
+  if (!(valor > 0) || !/^\d+\.\d{2}$/.test(m['54'])) return null;
+  return { chave:s['01'], valor, nome:m['59'] || '', cidade:m['60'] || '' };
+}
+
+/* Dados da loja na planilha (leitura pública, a mesma que o site usa). Devolve null se não der para ler. */
+async function lerDadosDaLoja(){
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch('https://docs.google.com/spreadsheets/d/' + SHEETS_ID + '/gviz/tq?tqx=out:json&sheet=config&headers=1', { signal: ctrl.signal });
+    if (!r.ok) return null;
+    const json = JSON.parse((await r.text()).match(/setResponse\(([\s\S]*)\)/)[1]);
+    const d = {};
+    (json.table.rows || []).forEach(row => { if (row.c && row.c[0] && row.c[0].v != null) d[String(row.c[0].v).trim()] = (row.c[1] && row.c[1].v != null) ? String(row.c[1].v).trim() : ''; });
+    return (d.pixChave && d.pixNome) ? { chave:d.pixChave, nome:d.pixNome, cidade:d.pixCidade || '' } : null;
+  } catch (e) { return null; }
+  finally { clearTimeout(t); }
+}
+
+function mostrarErro(msg){
+  $('carregando').style.display = 'none';
+  $('conteudo').innerHTML = '';
+  const e = $('erro'); e.style.display = 'block';
+  e.innerHTML = esc(msg) + '<br>Peça um novo código no WhatsApp.';
+}
+
+(async function iniciar(){
+  const params = new URLSearchParams(window.location.search);
+  const code = (params.get('c') || '').trim();
+  const vLink = params.get('v');
+  const pedido = (params.get('p') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 25);
+
+  if (!code) return mostrarErro('Link inválido ou expirado.');
+  const dados = analisarCodigo(code);
+  if (!dados) return mostrarErro('Este código Pix não é válido.');
+  if (vLink != null && vLink !== '' && Math.abs(parseFloat(vLink) - dados.valor) > 0.001) return mostrarErro('O valor do link não confere com o do código Pix.');
+
+  const loja = await lerDadosDaLoja();
+  let aviso = '';
+  if (loja) {
+    const igual = (a, b) => String(a).trim().toUpperCase() === String(b).trim().toUpperCase();
+    if (!igual(dados.chave, loja.chave) || !igual(dados.nome, loja.nome) || (loja.cidade && !igual(dados.cidade, loja.cidade))) {
+      return mostrarErro('Este código Pix não é o da Cunho\'s Burguer.');
+    }
+  } else {
+    aviso = 'Não conseguimos conferir os dados da loja agora. Antes de confirmar, veja se o nome do recebedor no seu banco é <b>' + esc(dados.nome) + '</b>.';
   }
 
-  const valorFmt = valor
-    ? 'R$ ' + parseFloat(valor).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
-    : 'Veja no WhatsApp';
-
-  const html = `
+  $('carregando').style.display = 'none';
+  $('conteudo').innerHTML = `
     <div class="card">
-      <div class="pedido-id">Pedido #${pedido || '—'}</div>
-      <div class="pedido-valor">${valorFmt}</div>
+      <div class="pedido-id">Pedido #${esc(pedido || '—')}</div>
+      <div class="pedido-valor">${esc(brl(dados.valor))}</div>
       <div class="pedido-label">Valor a pagar via Pix</div>
+      <div class="recebedor">Recebedor que aparece no banco: <b>${esc(dados.nome)}</b>${dados.cidade ? ' · ' + esc(dados.cidade) : ''}<br>É a conta da Cunho's Burguer.</div>
     </div>
 
-    <button class="btn-copiar" id="btn" onclick="copiar()">
-      <span id="btn-icon">📋</span>
-      <span id="btn-txt">COPIAR CÓDIGO PIX</span>
-    </button>
+    ${aviso ? '<div class="aviso alerta">' + aviso + '</div>' : ''}
+
+    <button class="btn-copiar" id="btn" type="button"><span id="btn-icon">📋</span><span id="btn-txt">COPIAR CÓDIGO PIX</span></button>
 
     <div class="code-label">Código Pix Copia e Cola</div>
-    <div class="code-box" id="code-box" onclick="copiar()">${escapeHtml(code)}</div>
+    <div class="code-box" id="code-box"></div>
+
+    <div class="qr-wrap" id="qr-wrap">
+      <div class="qr-box" id="qr-box"></div>
+      <div class="qr-hint">Está em outro aparelho? Escaneie este QR Code com o app do banco.</div>
+    </div>
 
     <div class="divider"></div>
 
     <div class="steps">
-      <div class="step">
-        <div class="step-n">1</div>
-        <div class="step-txt">Toque em <b>COPIAR CÓDIGO PIX</b> acima</div>
-      </div>
-      <div class="step">
-        <div class="step-n">2</div>
-        <div class="step-txt">Abra o app do seu banco</div>
-      </div>
-      <div class="step">
-        <div class="step-n">3</div>
-        <div class="step-txt">Vá em <b>Pix → Pix Copia e Cola</b> e cole o código</div>
-      </div>
-      <div class="step">
-        <div class="step-n">4</div>
-        <div class="step-txt">Confirme o pagamento de <b>${valorFmt}</b> para <b>Cunho's Burguer</b></div>
-      </div>
-      <div class="step">
-        <div class="step-n">5</div>
-        <div class="step-txt">Volte ao WhatsApp e envie o <b>comprovante</b></div>
-      </div>
+      <div class="step"><div class="step-n">1</div><div class="step-txt">Toque em <b>COPIAR CÓDIGO PIX</b> acima</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-txt">Abra o app do seu banco</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-txt">Vá em <b>Pix → Pix Copia e Cola</b> e cole o código</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-txt">Confirme o pagamento de <b>${esc(brl(dados.valor))}</b> para <b>${esc(dados.nome)}</b> (Cunho's Burguer)</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-txt">Volte ao WhatsApp e envie o <b>comprovante</b></div></div>
     </div>
 
     <div class="divider"></div>
 
-    <div class="aviso">
-      ⏳ Seu pedido só começa a ser preparado<br>
-      após o envio do comprovante no WhatsApp.
-    </div>
+    <div class="aviso">⏳ Seu pedido só começa a ser preparado<br>após o envio do comprovante no WhatsApp.</div>
   `;
-
-  document.getElementById('conteudo').innerHTML = html;
-
+  $('code-box').textContent = code;      // texto puro, nunca HTML
   window._pixCode = code;
+  $('btn').addEventListener('click', copiar);
+  $('code-box').addEventListener('click', selecionarCodigo);
+
+  try {
+    if (typeof qrcode === 'function') {
+      const qr = qrcode(0, 'M'); qr.addData(code); qr.make();
+      $('qr-box').innerHTML = qr.createImgTag(5, 0);
+      $('qr-wrap').classList.add('show');
+    }
+  } catch (e) { /* sem QR: o resto da página continua funcionando */ }
 })();
 
-function escapeHtml(s){
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function selecionarCodigo(){
+  const box = $('code-box'); if (!box) return;
+  const sel = window.getSelection(); const r = document.createRange();
+  r.selectNodeContents(box); sel.removeAllRanges(); sel.addRange(r);
 }
 
-function copiar(){
-  const code = window._pixCode;
-  if (!code) return;
-
-  const btn     = document.getElementById('btn');
-  const btnTxt  = document.getElementById('btn-txt');
-  const btnIcon = document.getElementById('btn-icon');
-
-  const tentativa = () => {
-    btnIcon.textContent = '✅';
-    btnTxt.textContent  = 'COPIADO! Abra seu banco.';
-    btn.classList.add('copiado');
-    mostrarToast();
-    setTimeout(() => {
-      btnIcon.textContent = '📋';
-      btnTxt.textContent  = 'COPIAR CÓDIGO PIX';
-      btn.classList.remove('copiado');
-    }, 3000);
-  };
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(tentativa).catch(() => fallback(code, tentativa));
-  } else {
-    fallback(code, tentativa);
-  }
-}
-
-function fallback(text, cb){
+function copiaAntiga(texto){
   const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try { document.execCommand('copy'); cb(); } catch(e){}
+  ta.value = texto; ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { ta.setSelectionRange(0, texto.length); } catch (e) {}
+  let ok = false;
+  try { ok = document.execCommand('copy') === true; } catch (e) { ok = false; }   // só vale se devolver true
   document.body.removeChild(ta);
+  return ok;
 }
 
-function mostrarToast(){
-  const t = document.getElementById('toast');
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+async function copiar(){
+  const code = window._pixCode; if (!code) return;
+  let ok = false;
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(code); ok = true; } } catch (e) { ok = false; }
+  if (!ok) ok = copiaAntiga(code);
+
+  const btn = $('btn'), txt = $('btn-txt'), ic = $('btn-icon');
+  if (ok) {
+    ic.textContent = '✅'; txt.textContent = 'COPIADO! Abra seu banco.';
+    btn.classList.remove('falhou'); btn.classList.add('copiado');
+    const t = $('toast'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500);
+    setTimeout(() => { ic.textContent = '📋'; txt.textContent = 'COPIAR CÓDIGO PIX'; btn.classList.remove('copiado'); }, 3000);
+  } else {
+    // Não conseguiu copiar sozinho (comum em navegadores dentro de aplicativos): deixa o código selecionado.
+    selecionarCodigo();
+    ic.textContent = '👇'; txt.textContent = 'Não foi possível copiar sozinho. O código está selecionado: toque e segure nele e escolha “Copiar”.';
+    btn.classList.add('falhou');
+  }
 }
 </script>
 </body>
