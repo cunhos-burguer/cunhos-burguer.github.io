@@ -878,16 +878,16 @@ const carneTodaEsgotada = () => tamanhosDisponiveis().length === 0;
    quando o cliente escolhe Normal/Zero.
    ═══════════════════════════════════════════════════════════════════ */
 const FOTOS = {
-  xcunhos:     { src:'img/x-cunhos.webp', gramatura:null },
-  tradicional: { src:'img/tradicional.webp', gramatura:null },
-  bacon:       { src:'img/bacon-especial.webp', gramatura:null },
-  duplo:       { src:'img/duplo.webp', gramatura:null },
-  coca:        { src:'', gramatura:null, variantes:{ Normal:'img/coca-original-350ml.webp', Zero:'img/coca-zero-350ml.webp' } },
-  sprite:      { src:'', gramatura:null, variantes:{ Normal:'img/sprite-original-350ml.webp', Zero:'img/sprite-zero-350ml.webp' } },
+  xcunhos:     { src:'x-cunhos.webp', gramatura:null },
+  tradicional: { src:'tradicional.webp', gramatura:null },
+  bacon:       { src:'bacon-especial.webp', gramatura:null },
+  duplo:       { src:'duplo.webp', gramatura:null },
+  coca:        { src:'', gramatura:null, variantes:{ Normal:'coca-original-350ml.webp', Zero:'coca-zero-350ml.webp' } },
+  sprite:      { src:'', gramatura:null, variantes:{ Normal:'sprite-original-350ml.webp', Zero:'sprite-zero-350ml.webp' } },
   // Açaí: uma foto por versão (Puro / Completo). Mostradas INTEIRAS e na mesma escala ('fit'), para o
   // 480 ml parecer maior que o 240 ml e não a mesma foto aproximada.
-  acai_p:      { src:'', gramatura:null, variantes:{ Puro:'img/acai-p-puro-240ml.webp', Completo:'img/acai-p-completo-240ml.webp' } },
-  acai_g:      { src:'', gramatura:null, variantes:{ Puro:'img/acai-g-puro-480ml.webp', Completo:'img/acai-g-completo-480ml.webp' } },
+  acai_p:      { src:'', gramatura:null, variantes:{ Puro:'acai-p-puro-240ml.webp', Completo:'acai-p-completo-240ml.webp' } },
+  acai_g:      { src:'', gramatura:null, variantes:{ Puro:'acai-g-puro-480ml.webp', Completo:'acai-g-completo-480ml.webp' } },
 };
 
 /* Gramaturas: o Duplo mostra a soma das duas carnes (240 g = 2×120 g | 360 g = 2×180 g).
@@ -906,7 +906,7 @@ let montOpener  = null;
 
 const fotoExtra = p => p.type === 'bebida' ? 'can' : (p.type === 'sobremesa' ? 'fit' : '');
 const fotoVar   = (p, d) => p.type === 'bebida' ? d.variant : (p.type === 'sobremesa' ? (d.completo ? 'Completo' : 'Puro') : null);
-function fotoHtml(p, extra, variante){
+function fotoHtml(p, extra, variante, eager){
   const fo = FOTOS[p.id] || {};
   const f = { src: (fo.variantes && variante && fo.variantes[variante]) || fo.src || '', gramatura: fo.gramatura };
   const tag = (f.src && f.gramatura) ? '<span class="foto-tag">Foto ilustrativa · ' + gramTxt(p, f.gramatura) + '</span>' : '';
@@ -917,7 +917,7 @@ function fotoHtml(p, extra, variante){
   // desfocada preenchendo as laterais.
   const fundo = (f.src && /\b(can|fit)\b/.test(extra || '')) ? '<div class="pimg-bg" style="background-image:url(\'' + esc(f.src) + '\')"></div>' : '';
   const img = f.src
-    ? '<img src="' + esc(f.src) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"'
+    ? '<img src="' + esc(f.src) + '" alt="' + esc(p.name) + '" loading="' + (eager ? 'eager' : 'lazy') + '" decoding="async"'
       + ' '
       + 'onerror="var t=this.parentNode.querySelector(\'.foto-tag,.pimg-bg\');if(t)t.remove();this.remove()">'
     : '';
@@ -1113,7 +1113,7 @@ function abrirMont(pid, size, uids){
   document.getElementById('mont-mode').textContent = uids
     ? ('Editando' + (uids.length > 1 ? ' · ' + uids.length + ' unidades' : ''))
     : 'Personalizar';
-  document.getElementById('mont-hero').innerHTML = fotoHtml(p, fotoExtra(p), fotoVar(p, draft));
+  document.getElementById('mont-hero').innerHTML = fotoHtml(p, fotoExtra(p), fotoVar(p, draft), true);
   const etiquetaGram = (p.type === 'burger' && !uids)
     ? '<div class="mont-size">🥩 ' + gramTxt(p, draft.size) + (p.duplo ? ' · ' + gramSub(p, draft.size) : '') + '</div>' : '';
   document.getElementById('mont-info').innerHTML = etiquetaGram + (p.type === 'burger' ? '<b>Ingredientes originais</b>' : '') + p.desc;
@@ -1138,7 +1138,7 @@ function setPonto(p){ draft.ponto = p; desenharMont(); }
 function setVariant(v){
   if (varianteEsgotada(draft.p.id, v)) { aviso('😔<br>Esse sabor<br>esgotou'); return; }
   draft.variant = v;
-  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'can', v);
+  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'can', v, true);
   desenharMont();
 }
 function togAdd(id){ const i = draft.add.indexOf(id); i>=0 ? draft.add.splice(i,1) : draft.add.push(id); desenharMont(); }
@@ -1147,7 +1147,7 @@ function setObs(v){ draft.obs = v; }
 function toggleCompleto(v){
   draft.completo = v;
   if (v && !draft.leite) draft.leite = 'leiteCond';
-  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'fit', fotoVar(draft.p, draft));
+  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'fit', fotoVar(draft.p, draft), true);
   desenharMont();
 }
 function setLeite(id){ draft.leite = id; desenharMont(); }
