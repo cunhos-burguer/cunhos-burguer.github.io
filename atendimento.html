@@ -34,6 +34,12 @@ summary { cursor:pointer; color:var(--mudo); font-size:13px; padding:4px 0; }
 .ed .duas { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .help { background:#1b1b1b; border:1px dashed var(--borda); border-radius:12px; padding:10px; font-size:13px; color:var(--mudo); margin-bottom:12px; }
 code { background:#000; padding:1px 5px; border-radius:5px; color:#ffb27a; }
+.filtros { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
+.filtro { border:1px solid var(--borda); background:var(--card2); color:var(--mudo); border-radius:999px; padding:0 12px; min-height:38px; font-size:13px; font-weight:700; }
+.filtro.on { background:var(--laranja); border-color:var(--laranja); color:#000; }
+.filtro .qtd { opacity:.75; font-weight:600; margin-left:2px; }
+.sujo { background:rgba(250,204,21,.14); border:1px solid rgba(250,204,21,.5); color:#ffe066; border-radius:10px; padding:9px 12px; margin:0 0 10px; font-size:14px; }
+.sujo[hidden] { display:none; }
 </style>
 </head>
 <body>
@@ -203,33 +209,46 @@ $('#v-clientes').addEventListener('click', async ev => { const b = ev.target.clo
   try { await api('cliente_brinde', { telefone: b.dataset.tel }); await carregar(true); renderClientes(); aviso('🎁 Brinde registrado'); } catch (e) { aviso(e.message); } });
 
 /* ───────── modelos (edição) ───────── */
-let editando = [];
-function renderModelos() {
-  editando = JSON.parse(JSON.stringify(App.E.modelos));
-  const ET = { aguardando: 'Aguardando comprovante', producao: 'Em produção', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', todas: 'Qualquer momento' }, PARA = { novo: 'Cliente novo', recorrente: 'Cliente recorrente', todos: 'Todos' };
+let editando = [], filtroModelos = 'all', modelosSujo = false;
+const ET = { aguardando: 'Aguardando comprovante', producao: 'Em produção', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', todas: 'Qualquer momento' };
+const PARA = { novo: 'Cliente novo', recorrente: 'Cliente recorrente', todos: 'Todos' };
+/* manter=true: continua com o rascunho que está na tela (troca de filtro, novo modelo, excluir); sem isso, carrega do servidor */
+function renderModelos(manter) {
+  if (!manter || !editando.length) { editando = JSON.parse(JSON.stringify(App.E.modelos)); modelosSujo = false; }
   const sel = (o, v) => Object.entries(o).map(([k, t]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${t}</option>`).join('');
+  const conta = k => k === 'all' ? editando.length : editando.filter(m => m.etapa === k).length;
+  const visiveis = editando.map((m, i) => ({ m, i })).filter(x => filtroModelos === 'all' || x.m.etapa === filtroModelos);
+  const chips = [['all', 'Todos'], ...Object.entries(ET)].map(([k, t]) => `<button class="filtro ${k === filtroModelos ? 'on' : ''}" data-filtro="${k}" type="button">${t} <span class="qtd">${conta(k)}</span></button>`).join('');
   $('#v-modelos').innerHTML = `<div class="help">Use estes campos dentro do texto: <code>{nome}</code> <code>{total}</code> <code>{ordinal}</code> (quantas vezes o cliente já pediu: 2º, 3º…) <code>{saudacao}</code> (sempre “Boa noite”) <code>{previsao}</code> (minutos).<br>
-    Tom de voz do “pedido para a IA” (você muda na aba Config da planilha): <i>${esc(App.E.config.tomDeVoz)}</i></div>` +
-    editando.map((m, i) => `<div class="ed" data-i="${i}"><label class="l">Título</label><input data-f="titulo" value="${esc(m.titulo)}">
+    Tom de voz do “pedido para a IA” (você muda na aba Config da planilha): <i>${esc(App.E.config.tomDeVoz)}</i></div>
+    <div class="filtros" role="group" aria-label="Filtrar modelos por momento">${chips}</div>
+    <div class="sujo" id="aviso-sujo" ${modelosSujo ? '' : 'hidden'}>✏️ Você tem alterações <b>não salvas</b>. Toque em <b>💾 Salvar todos</b> para valer.</div>
+    <div class="acoes" style="margin-bottom:10px"><button class="btn pri" data-macao="salvar" type="button">💾 Salvar todos</button><button class="btn" data-macao="add" type="button">➕ Novo modelo</button></div>
+    <div class="mudo" style="margin-bottom:8px">Mostrando ${visiveis.length} de ${editando.length} modelos.</div>` +
+    (visiveis.length ? visiveis.map(({ m, i }) => `<div class="ed" data-i="${i}"><label class="l">Título</label><input data-f="titulo" value="${esc(m.titulo)}">
       <div class="duas"><div><label class="l">Categoria</label><input data-f="categoria" value="${esc(m.categoria)}"></div><div><label class="l">Quando aparece</label><select data-f="etapa">${sel(ET, m.etapa)}</select></div></div>
       <label class="l">Para quem</label><select data-f="para">${sel(PARA, m.para)}</select>
       <label class="l">Texto</label><textarea data-f="texto" rows="4">${esc(m.texto)}</textarea>
-      <div class="acoes"><button class="btn peq perigo" data-del="${i}" type="button">Excluir</button></div></div>`).join('') +
-    `<div class="acoes"><button class="btn" id="m-add" type="button">➕ Novo modelo</button><button class="btn pri" id="m-salvar" type="button">💾 Salvar todos</button><button class="btn perigo" id="m-padrao" type="button">Restaurar modelos padrão</button></div>`;
+      <div class="acoes"><button class="btn peq perigo" data-del="${i}" type="button">Excluir</button></div></div>`).join('') : '<div class="vazio">Nenhum modelo neste momento. Toque em “➕ Novo modelo” para criar um.</div>') +
+    `<div class="acoes"><button class="btn pri" data-macao="salvar" type="button">💾 Salvar todos</button><button class="btn" data-macao="add" type="button">➕ Novo modelo</button><button class="btn perigo" data-macao="padrao" type="button">Restaurar modelos padrão</button></div>`;
 }
+/* guarda no rascunho o que está escrito nos cartões que aparecem agora (os escondidos pelo filtro já estão no rascunho) */
 function lerEdicao() { $$('#v-modelos .ed').forEach(div => { const m = editando[Number(div.dataset.i)]; $$('[data-f]', div).forEach(el => { m[el.dataset.f] = el.value; }); }); }
+$('#v-modelos').addEventListener('input', ev => { if (ev.target.dataset && ev.target.dataset.f) { modelosSujo = true; const a = $('#aviso-sujo'); if (a) a.hidden = false; } });
 $('#v-modelos').addEventListener('click', async ev => {
-  const t = ev.target; if (t.id === 'm-add') { lerEdicao(); editando.push({ id: '', categoria: 'Outros', titulo: 'Novo modelo', etapa: 'todas', para: 'todos', texto: 'Olá, {nome}! ' }); App.E.modelos = editando; renderModelos(); return; }
-  if (t.dataset.del !== undefined) { lerEdicao(); editando.splice(Number(t.dataset.del), 1); App.E.modelos = editando; renderModelos(); return; }
+  const t = ev.target.closest('button'); if (!t) return;
+  if (t.dataset.filtro) { lerEdicao(); filtroModelos = t.dataset.filtro; renderModelos(true); return; }
+  if (t.dataset.macao === 'add') { lerEdicao(); editando.push({ id: '', categoria: 'Outros', titulo: 'Novo modelo', etapa: filtroModelos === 'all' ? 'todas' : filtroModelos, para: 'todos', texto: 'Olá, {nome}! ' }); modelosSujo = true; renderModelos(true); return; }
+  if (t.dataset.del !== undefined) { if (!confirm('Excluir este modelo? (só vale depois de Salvar todos)')) return; lerEdicao(); editando.splice(Number(t.dataset.del), 1); modelosSujo = true; renderModelos(true); return; }
   try {
-    if (t.id === 'm-salvar') { lerEdicao(); await api('modelos_salvar', { modelos: editando }); await carregar(true); renderModelos(); aviso('💾 Modelos salvos'); }
-    if (t.id === 'm-padrao') { if (!confirm('Voltar para os modelos padrão? Suas edições serão perdidas.')) return; await api('modelos_salvar', { padrao: true }); await carregar(true); renderModelos(); aviso('Modelos padrão restaurados'); }
-  } catch (e) { aviso(e.message); }
+    if (t.dataset.macao === 'salvar') { lerEdicao(); t.disabled = true; await api('modelos_salvar', { modelos: editando }); await carregar(true); modelosSujo = false; renderModelos(); aviso('💾 Modelos salvos'); }
+    if (t.dataset.macao === 'padrao') { if (!confirm('Voltar para os modelos padrão? Suas edições serão perdidas.')) return; await api('modelos_salvar', { padrao: true }); await carregar(true); modelosSujo = false; renderModelos(); aviso('Modelos padrão restaurados'); }
+  } catch (e) { aviso(e.message); t.disabled = false; }
 });
 
 /* ───────── abas, som e pedidos novos ───────── */
 $$('.aba').forEach(b => b.addEventListener('click', () => { aba = b.dataset.aba; $$('.aba').forEach(x => x.classList.toggle('on', x === b));
-  ['pedidos', 'clientes', 'modelos'].forEach(k => { $('#v-' + k).hidden = k !== aba; }); if (aba === 'clientes') renderClientes(); if (aba === 'modelos') renderModelos(); }));
+  ['pedidos', 'clientes', 'modelos'].forEach(k => { $('#v-' + k).hidden = k !== aba; }); if (aba === 'clientes') renderClientes(); if (aba === 'modelos') renderModelos(modelosSujo); }));
 $('#btn-som').addEventListener('click', () => { ativarSom(); $('#btn-som').textContent = '🔔 Som ativado'; });
 function detectarNovos(E) {
   const ids = new Set(E.pedidos.map(p => p.id));
