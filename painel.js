@@ -11,7 +11,7 @@ const primeiroNome = n => String(n || '').trim().split(/\s+/)[0] || '';
 function fmtTel(t) { const d = String(t).replace(/^55/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : t; }
 const hhmm = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 const agoraV = () => App.E.agora + (performance.now() - App.recebidoEm);   // hora do SERVIDOR (não depende do relógio do aparelho)
-const saudacao = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; };
+const saudacao = () => 'Boa noite';   // a hamburgueria só atende à noite; se precisar de outra, o atendimento edita o texto antes de enviar
 
 /* ─── comunicação com o script de pedidos ─── */
 const PEDIDOS_URL = 'https://script.google.com/macros/s/AKfycbxwW2p-7sTU69UF3eB8Y-aeZO1F9_Ljb7n91wSfgdiaX-1lS9lwAgp8gUSczjO67hrn/exec';

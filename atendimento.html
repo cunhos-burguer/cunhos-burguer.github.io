@@ -208,7 +208,7 @@ function renderModelos() {
   editando = JSON.parse(JSON.stringify(App.E.modelos));
   const ET = { aguardando: 'Aguardando comprovante', producao: 'Em produção', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', todas: 'Qualquer momento' }, PARA = { novo: 'Cliente novo', recorrente: 'Cliente recorrente', todos: 'Todos' };
   const sel = (o, v) => Object.entries(o).map(([k, t]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${t}</option>`).join('');
-  $('#v-modelos').innerHTML = `<div class="help">Use estes campos dentro do texto: <code>{nome}</code> <code>{pedido}</code> <code>{total}</code> <code>{ordinal}</code> (2º, 3º…) <code>{saudacao}</code> (bom dia/tarde/noite) <code>{previsao}</code> (minutos).<br>
+  $('#v-modelos').innerHTML = `<div class="help">Use estes campos dentro do texto: <code>{nome}</code> <code>{total}</code> <code>{ordinal}</code> (quantas vezes o cliente já pediu: 2º, 3º…) <code>{saudacao}</code> (sempre “Boa noite”) <code>{previsao}</code> (minutos).<br>
     Tom de voz do “pedido para a IA” (você muda na aba Config da planilha): <i>${esc(App.E.config.tomDeVoz)}</i></div>` +
     editando.map((m, i) => `<div class="ed" data-i="${i}"><label class="l">Título</label><input data-f="titulo" value="${esc(m.titulo)}">
       <div class="duas"><div><label class="l">Categoria</label><input data-f="categoria" value="${esc(m.categoria)}"></div><div><label class="l">Quando aparece</label><select data-f="etapa">${sel(ET, m.etapa)}</select></div></div>

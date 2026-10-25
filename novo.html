@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#000000">
 <title>Cunho's Burguer — Fazer Pedido</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<!-- QR Code: versão fixa com verificação de integridade (SRI). Se não carregar, o Pix continua por "copia e cola". -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"
+        integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 :root{ --orange:#FF6B00; --orange-dark:#e55e00; --bg:#0f0f0f; --card:#1a1a1a;
@@ -303,6 +305,12 @@ button{ font-family:inherit; }
            cursor:pointer; margin-top:4px; }
 .pay-send:active{ background:var(--orange-dark); }
 .pay-note{ font-size:11px; color:#777; margin-top:10px; }
+.pay-link{ background:none; border:none; color:#9a9a9a; font-family:'Montserrat',sans-serif; font-size:12.5px;
+           text-decoration:underline; cursor:pointer; margin-top:12px; padding:8px; }
+.pay-ped{ font-size:12px; color:#9a9a9a; letter-spacing:.5px; margin-bottom:2px; word-break:break-all; }
+.pay-codebox{ margin-top:10px; background:#0d0d0d; border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+              font-size:11px; color:#aaa; word-break:break-all; text-align:left; line-height:1.45;
+              max-height:74px; overflow:auto; user-select:all; -webkit-user-select:all; }
 
 /* PASSO A PASSO (fluxo sem Pix na tela) */
 .steps{ display:flex; flex-direction:column; gap:14px; text-align:left; margin:18px 0 22px; }
@@ -663,7 +671,7 @@ const VARIANTES = ['Normal','Zero'];
 const PEDIDOS_URL  = 'https://script.google.com/macros/s/AKfycbxwW2p-7sTU69UF3eB8Y-aeZO1F9_Ljb7n91wSfgdiaX-1lS9lwAgp8gUSczjO67hrn/exec';
 const MODO_TESTE   = new URLSearchParams(location.search).get('teste') === '1';
 const LIMITE_SALVAR_MS = 8000;
-let PAINEL_ATIVO = true;
+let PAINEL_ATIVO = true, PIX_NA_TELA = true;
 
 /* ════ APLICA CONFIG ════ */
 function aplicarConfig(C) {
@@ -685,6 +693,7 @@ function aplicarConfig(C) {
   FRETE_URL           = C.freteUrl || '';
   ACEITA_CARTAO       = !!C.aceitaCartao;
   PAINEL_ATIVO        = C.painelAtivo !== false;
+  PIX_NA_TELA         = C.pixNaTela !== false;
 
   PRODUCTS = {
     xcunhos: { id:'xcunhos', name:"X-Cunho's", emoji:'🍔', base:C.precos.xcunhos, up180:C.upgrade180,
@@ -830,6 +839,7 @@ function parsearPlanilha(d) {
     },
     mostrarPixNaTela: bool(d.mostrarPixNaTela, false),
     painelAtivo: bool(d.painelAtivo, true),   // chave opcional na planilha: FALSE desliga o envio ao painel (o pedido segue só pelo WhatsApp)
+    pixNaTela:   bool(d.pixNaTela, true),     // chave opcional: FALSE volta ao Pix por link no WhatsApp (só vale com o painel ativo)
     pixChave:  str(d.pixChave, '126bc16c-7ecd-4018-8c09-d19895b1fd1a'),
     pixNome:   str(d.pixNome, 'LEONARDO P GIUSTI'),
     pixCidade: str(d.pixCidade, 'INDAIATUBA'),
@@ -1533,26 +1543,32 @@ function atualizarPix(){
   const total = totalFinal();
   const el = document.getElementById('pay-total');
   if (el) el.textContent = fmt(total);
-  if (total <= 0 || typeof qrcode === 'undefined'){
-    document.getElementById('pix-qr').innerHTML = '';
-    document.getElementById('pix-code').dataset.code = '';
-    return;
+  const box = document.getElementById('pix-qr'), cod = document.getElementById('pix-code');
+  if (!cod) return;
+  if (total <= 0){ if (box) box.innerHTML = ''; cod.dataset.code = ''; return; }
+  // txid '***' (aceito por todos os bancos); o número do pedido vai na "informação ao pagador"
+  const info = currentPixId ? ('PEDIDO ' + currentPixId) : '';
+  const code = montarPix(total, '***', info);
+  cod.dataset.code = code;                                   // o código vale mesmo se a biblioteca do QR não carregar
+  const vis = document.getElementById('pix-codigo-visivel'); if (vis) vis.textContent = code;
+  if (!box) return;
+  if (typeof qrcode !== 'undefined'){
+    const qr = qrcode(0,'M'); qr.addData(code); qr.make();
+    box.innerHTML = qr.createImgTag(5,0);
+  } else {
+    box.innerHTML = ''; const w = box.closest('.pay-qr'); if (w) w.style.display = 'none';   // sem QR: fica só o "copia e cola"
   }
-  // Usa o ID do pedido atual como txid para correlação no extrato
-   const txid = '***';
-  const info  = currentPixId ? ('PEDIDO ' + currentPixId + ' WHATSAPP') : '';
-  const code  = montarPix(total, txid, info);
-  const qr    = qrcode(0,'M');
-  qr.addData(code); qr.make();
-  document.getElementById('pix-qr').innerHTML = qr.createImgTag(5,0);
-  document.getElementById('pix-code').dataset.code = code;
 }
 function copiarPix(){
-  const code = document.getElementById('pix-code').dataset.code;
+  const cod = document.getElementById('pix-code'), code = cod && cod.dataset.code;
   if (!code){ aviso('⚠️<br>Adicione itens<br>primeiro'); return; }
-  navigator.clipboard.writeText(code)
-    .then(() => aviso('✅<br>Código Pix<br>copiado!'))
-    .catch(() => aviso('⚠️<br>Copie<br>manualmente'));
+  const manual = () => {                                      // se o celular não deixar copiar sozinho, deixa o código selecionado
+    const v = document.getElementById('pix-codigo-visivel');
+    if (v){ const r = document.createRange(); r.selectNodeContents(v); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+    aviso('⚠️<br>Toque e segure no código<br>abaixo para copiar');
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code).then(() => aviso('✅<br>Código Pix<br>copiado!')).catch(manual);
+  else manual();
 }
 
 /* ════ ENDEREÇO, FRETE E FORMA DE PAGAMENTO ════
@@ -1751,7 +1767,15 @@ function abrirPagamentoInterno(){
       + '<div class="pay-note" style="margin-top:-8px">+ entrega a confirmar pela equipe</div>';
 
   let html;
-  if (comPix && MOSTRAR_PIX_NA_TELA) {
+  if (comPix && PIX_NA_TELA && PAINEL_ATIVO) {
+    // Pix na tela: o pedido é gravado ao tocar em "Pagar com Pix"; o cliente paga e manda o comprovante pelo WhatsApp
+    html = '<div class="big-icon">💳</div>'
+      + '<div class="pay-step" style="text-align:center">Pagamento por Pix</div>'
+      + linhaTotal
+      + '<div class="pay-alert">Depois de pagar, <b>envie o comprovante pelo WhatsApp</b> para começarmos o preparo.</div>'
+      + '<button class="pay-send-full" id="btn-pagar-pix" onclick="gerarPixTela()">💳 Pagar com Pix</button>'
+      + '<button class="pay-link" onclick="enviarPedido()">Prefiro finalizar pelo WhatsApp</button>';
+  } else if (comPix && MOSTRAR_PIX_NA_TELA) {
     // Modo desktop/tablet: mostra QR na tela para escanear com outro celular
     html = '<div class="pay-step">Passo 1 · Pague com Pix</div>'
       + linhaTotal
@@ -1795,7 +1819,7 @@ function abrirPagamentoInterno(){
       + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>';
   }
   document.getElementById('pay-body').innerHTML = html;
-  if (comPix && MOSTRAR_PIX_NA_TELA) atualizarPix();
+  if (comPix && MOSTRAR_PIX_NA_TELA && !(PIX_NA_TELA && PAINEL_ATIVO)) atualizarPix();
   document.getElementById('pay-ov').classList.add('show');
 }
 function fecharPagamento(){ document.getElementById('pay-ov').classList.remove('show'); }
@@ -1832,10 +1856,80 @@ async function salvarPedidoNoPainel(corpo){
     // text/plain evita a "consulta prévia" (CORS) que o Apps Script não responde
     const res = await fetch(PEDIDOS_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(corpo), signal: ctrl.signal });
     const j = await res.json();
-    return j && j.ok ? { ok:true } : { ok:false, motivo:(j && j.codigo) || 'recusado' };
+    return j && j.ok ? { ok:true, numero: Number(j.numero) || null } : { ok:false, motivo:(j && j.codigo) || 'recusado' };
   } catch (e) {
     return { ok:false, motivo: e && e.name === 'AbortError' ? 'demorou' : 'rede' };
   } finally { clearTimeout(timer); }
+}
+
+/* ═══ PIX NA TELA ═══
+   1) "Pagar com Pix": grava o pedido no painel (espera a resposta, até 8 s) e só então mostra o QR.
+      Se não gravar, NÃO mostra o Pix: cai no fluxo antigo (mensagem no WhatsApp com o link do Pix),
+      porque Pix pago sem pedido registrado é o pior caso.
+   2) Depois de pagar, o cliente toca em "Enviar comprovante no WhatsApp". */
+let pixSalvo = null;   // { id, assinatura, numero } do último pedido gravado
+function dadosDoPedido(){
+  const sub = totalPedido();
+  return { nome: valorCampo('cli-nome'), tel: mascaraTel(valorCampo('cli-tel')), rua: valorCampo('cli-rua'), num: valorCampo('cli-num'),
+           bairro: valorCampo('cli-bairro'), comp: valorCampo('cli-comp'), cep: valorCampo('cli-cep'), sub, total: freteDefinido() ? totalFinal() : sub };
+}
+function corpoParaPainel(pedidoId){
+  const d = dadosDoPedido();
+  return { acao:'criar_pedido', pedidoId, teste: MODO_TESTE, pagamento: PAGAMENTO, origem: MODO_TESTE ? 'site-teste' : 'site',
+    cliente:{ nome: d.nome, telefone: d.tel, endereco:{ rua: d.rua, numero: d.num, bairro: d.bairro, cep: d.cep, complemento: d.comp } },
+    itens: itensParaPainel(), frete: freteDefinido() ? FRETE.valor : null, total: freteDefinido() ? d.total : null };
+}
+const assinaturaPedido = () => JSON.stringify([itensParaPainel(), freteDefinido() ? FRETE.valor : null, dadosDoPedido(), PAGAMENTO]);   // mudou algo → é outro pedido
+
+async function gerarPixTela(){
+  if (enviando) return;
+  enviando = true;
+  const btn = document.getElementById('btn-pagar-pix');
+  if (btn){ btn.disabled = true; btn.textContent = '⏳ Gerando seu Pix…'; }
+  const assin = assinaturaPedido();
+  let numero = null;
+  if (pixSalvo && pixSalvo.assinatura === assin) {            // voltou na tela sem mudar nada: reaproveita o mesmo pedido
+    currentPixId = pixSalvo.id; numero = pixSalvo.numero;
+  } else {
+    currentPixId = gerarIdPedido();
+    const r = await salvarPedidoNoPainel(corpoParaPainel(currentPixId));
+    if (!r.ok) {                                              // plano B: fluxo de sempre, pelo WhatsApp
+      console.warn('[Cunhos] Pix na tela indisponível (' + r.motivo + '). Seguindo pelo WhatsApp.');
+      aviso('⚠️<br>Não deu para gerar o Pix agora.<br>Vamos finalizar pelo WhatsApp');
+      await new Promise(res => setTimeout(res, 1600));
+      enviando = false;
+      return enviarPedido();
+    }
+    numero = r.numero; pixSalvo = { id: currentPixId, assinatura: assin, numero };
+  }
+  enviando = false;
+  mostrarTelaPix(numero);
+}
+function mostrarTelaPix(numero){
+  const n = Number(numero) || 0;
+  document.getElementById('pay-body').innerHTML =
+      '<div class="pay-ped">Pedido #' + currentPixId + '</div>'
+    + '<div class="pay-step" style="text-align:center">Pague com Pix</div>'
+    + '<div class="pay-total" id="pay-total">' + fmtUi(totalFinal()) + '</div>'
+    + '<div class="pay-qr"><div id="pix-qr"></div></div>'
+    + '<div class="pay-hint">Escaneie com o app do banco ou copie o código</div>'
+    + '<button class="pay-copy" onclick="copiarPix()">📋 Copiar código Pix</button>'
+    + '<div class="code-hidden" id="pix-code"></div>'
+    + '<div class="pay-codebox" id="pix-codigo-visivel"></div>'
+    + '<div class="pay-div"><span>DEPOIS DE PAGAR</span></div>'
+    + '<button class="pay-send" onclick="enviarComprovante()">📲 Enviar comprovante no WhatsApp</button>'
+    + '<div class="pay-note">Anexe a foto ou o print do comprovante na conversa. Só começamos o preparo depois dele. 🙏</div>';
+  atualizarPix();
+}
+function enviarComprovante(){
+  if (!pixSalvo) return;
+  const d = dadosDoPedido();
+  const msg = '📸 *COMPROVANTE DO PIX*\n'
+    + '🔖 Pedido #' + pixSalvo.id + '\n'
+    + '👤 ' + d.nome + '\n'
+    + '💰 Total: ' + fmt(d.total) + '\n\n'
+    + 'Segue o comprovante do meu Pix 👇';
+  window.location.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg);
 }
 
 /* Uso normal: dispara o envio e NÃO espera (keepalive deixa a requisição terminar mesmo com a troca para o WhatsApp). */
@@ -1863,6 +1957,7 @@ async function enviarPedido(){
   const total  = freteDefinido() ? totalFinal() : sub;
 
   // Garante que temos um ID de pedido (pode ser chamado sem passar por abrirPagamento)
+  if (pixSalvo && pixSalvo.assinatura === assinaturaPedido()) currentPixId = pixSalvo.id;   // este mesmo pedido já foi gravado: não cria outro
   if (!currentPixId) currentPixId = gerarIdPedido();
   const pedidoId = currentPixId;
 
@@ -1935,10 +2030,7 @@ async function enviarPedido(){
   }
 
   // 1) Grava o pedido no painel. Qualquer falha só significa "segue pelo WhatsApp, como sempre foi".
-  const corpoPainel = {
-    acao:'criar_pedido', pedidoId, teste: MODO_TESTE, pagamento: PAGAMENTO, origem: MODO_TESTE ? 'site-teste' : 'site',
-    cliente:{ nome, telefone: tel, endereco:{ rua, numero: num, bairro, cep, complemento: comp } },
-    itens: itensParaPainel(), frete: freteDefinido() ? FRETE.valor : null, total: freteDefinido() ? total : null };
+  const corpoPainel = corpoParaPainel(pedidoId);
   const botao = document.querySelector('#pay-body .pay-send-full, #pay-body .pay-send');
   if (MODO_TESTE) {
     // Modo teste (?teste=1): espera a resposta para mostrar se gravou
