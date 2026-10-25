@@ -25,7 +25,8 @@ body { font-size:16px; }
 .lin b { color:var(--laranja); font-size:18px; }
 .pedidos { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; }
 .ped { background:var(--card); border:2px solid var(--borda); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
-.ped.atraso { border-color:var(--vermelho); }
+.ped.atraso { border-color:var(--vermelho); animation:alertaCartao 1s infinite; }
+.ped .cron .leg.atrasado { color:var(--vermelho); font-weight:900; letter-spacing:.5px; animation:pisca 1s infinite; }
 .ped .cab { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .ped .n { font-family:'Bebas Neue',Impact,sans-serif; font-size:40px; line-height:1; color:var(--laranja); }
 .ped .cli { font-weight:800; font-size:19px; }
@@ -136,7 +137,7 @@ function cartao(p) {
   const meta = App.E.config.metaProducaoMin * 60000;
   return `<div class="ped" data-id="${p.id}">
     <div class="cab"><span class="n">#${p.numero}</span><div><div class="cli">${esc(p.cliente.nome)}${p.teste ? ' <span class="chip verm">🧪 TESTE</span>' : ''}</div><div class="mudo">pago às ${hhmm(p.pagoEm)} · ${esc(p.cliente.endereco.bairro)}</div></div>
-      <div class="cron"><span class="tempo" data-ini="${p.producaoInicio}"></span><span class="mudo">meta ${mmss(meta)}</span></div></div>
+      <div class="cron"><span class="tempo" data-ini="${p.producaoInicio}"></span><span class="mudo leg">restam</span></div></div>
     ${blocoCarnes(p)}
     <div class="barra" data-barra="${p.producaoInicio}"><i></i></div>
     ${agruparItens(p).map(linhaItem).join('')}
@@ -150,8 +151,10 @@ function render() {
 }
 function tick() {
   if (!App.E) return; const agora = agoraV(), meta = App.E.config.metaProducaoMin * 60000; let atrasados = 0, n = 0;
-  $$('.ped').forEach(c => { const t = $('.tempo', c), d = agora - Number(t.dataset.ini), k = classeTempo(d, meta), b = $('.barra', c);
-    t.textContent = mmss(d); t.className = 'tempo ' + k[0]; b.className = 'barra ' + k[1]; $('i', b).style.width = Math.min(100, k[2]) + '%'; c.classList.toggle('atraso', d >= meta); n++; if (d >= meta) atrasados++; });
+  $$('.ped').forEach(c => { const t = $('.tempo', c), r = contagem(Number(t.dataset.ini), meta, agora), b = $('.barra', c), leg = $('.leg', c);
+    t.textContent = r.texto; t.className = 'tempo ' + r.classe; b.className = 'barra ' + r.barra; $('i', b).style.width = r.pctRestante + '%'; c.classList.toggle('atraso', r.atrasado);
+    if (leg) { leg.textContent = r.atrasado ? 'ATRASADO' : 'restam · meta ' + mmss(meta); leg.className = 'mudo leg' + (r.atrasado ? ' atrasado' : ''); }
+    n++; if (r.atrasado) atrasados++; });
   $('#c-prod').textContent = 'Em produção: ' + n; const a = $('#c-atraso'); a.style.display = atrasados ? '' : 'none'; a.textContent = 'Atrasados: ' + atrasados;
 }
 setInterval(tick, 1000);

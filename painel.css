@@ -45,6 +45,7 @@ label.l { display:block; font-size:12px; color:var(--mudo); font-weight:700; let
 .tempo { font-variant-numeric:tabular-nums; font-weight:800; }
 .t-ok { color:var(--verde); } .t-atencao { color:var(--amarelo); } .t-alerta { color:#ff9b4d; } .t-atraso { color:var(--vermelho); animation:pisca 1s infinite; }
 @keyframes pisca { 50% { opacity:.45; } }
+@keyframes alertaCartao { 50% { box-shadow:0 0 0 5px rgba(255,93,93,.6); background-color:#2b1212; } }   /* cartão atrasado: borda vermelha pulsando */
 .barra { height:8px; background:#2a2a2a; border-radius:99px; overflow:hidden; }
 .barra > i { display:block; height:100%; background:var(--verde); width:0; transition:width .5s; }
 .barra.amar > i { background:var(--amarelo); } .barra.lar > i { background:#ff9b4d; } .barra.verm > i { background:var(--vermelho); }

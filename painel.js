@@ -175,4 +175,9 @@ function resumoItens(p) { const E = App.E; return agruparItens(p).map(g => `${g.
 function nomeAdd(id, E) { return E.catalogo.adicionais[id] ? E.catalogo.adicionais[id].nome : id; }
 
 /* classe do cronômetro de produção (meta em ms) */
+/* contagem REGRESSIVA da meta de preparo: "12:34" enquanto sobra tempo; passou da meta → "+03:10" (quanto estourou), vermelho piscante */
+function contagem(inicio, meta, agora) {
+  const gasto = agora - inicio, resta = meta - gasto, atrasado = resta <= 0, k = classeTempo(gasto, meta);
+  return { atrasado, texto: atrasado ? '+' + mmss(-resta) : mmss(resta), classe: k[0], barra: k[1], pctRestante: atrasado ? 100 : Math.max(0, 100 - k[2]) };
+}
 function classeTempo(decorrido, meta) { const r = decorrido / meta; return r >= 1 ? ['t-atraso', 'verm', 100] : r >= 0.83 ? ['t-alerta', 'lar', r * 100] : r >= 0.5 ? ['t-atencao', 'amar', r * 100] : ['t-ok', '', r * 100]; }

@@ -9,7 +9,7 @@
 <style>
 .lista { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:10px; }
 .cartao { background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:12px; }
-.cartao.estourou { border-color:var(--vermelho); box-shadow:0 0 0 1px var(--vermelho); }
+.cartao.estourou { border-color:var(--vermelho); box-shadow:0 0 0 1px var(--vermelho); animation:alertaCartao 1s infinite; }
 .cartao.novo { animation:destaque 1.1s 4; }
 @keyframes destaque { 50% { background:#3a2410; } }
 .linha1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -149,7 +149,9 @@ function tick() {
   $$('[data-t="espera"]').forEach(el => { const r = Number(el.dataset.fim) - agora, c = el.closest('.cartao'), rot = $('.rot', c);
     if (r > 0) { el.textContent = mmss(r); el.className = 'tempo ' + (r < 20000 ? 't-alerta' : 't-ok'); c.classList.remove('estourou'); rot.textContent = '⏳ Comprovante do Pix'; }
     else { el.textContent = '+' + mmss(-r); el.className = 'tempo t-atraso'; c.classList.add('estourou'); rot.textContent = '⏰ Tempo esgotado: cobrar o comprovante'; } });
-  $$('[data-t="prod"]').forEach(el => { const d = agora - Number(el.dataset.ini), k = classeTempo(d, meta); el.textContent = mmss(d) + ' / ' + mmss(meta); el.className = 'tempo ' + k[0]; });
+  $$('[data-t="prod"]').forEach(el => { const r = contagem(Number(el.dataset.ini), meta, agora), c = el.closest('.cartao'), rot = el.previousElementSibling;
+    el.textContent = r.texto; el.className = 'tempo ' + r.classe; c.classList.toggle('estourou', r.atrasado);
+    if (rot) rot.textContent = r.atrasado ? '🔥 Produção ATRASADA' : '🔥 Na produção · restam'; });
   $$('[data-t="rota"]').forEach(el => { el.textContent = 'há ' + mmss(agora - Number(el.dataset.ini)); el.className = 'tempo'; });
 }
 setInterval(tick, 1000);
