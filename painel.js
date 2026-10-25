@@ -98,6 +98,8 @@ function aplicarLocal(p, op, extra) {
   else if (op === 'cancelar') { p.status = 'cancelado'; p.canceladoEm = t; log('Cancelado'); }
   else if (op === 'mensagem') { p.mensagens = p.mensagens || {}; p.mensagens[extra.chave] = t; }
   else if (op === 'brinde') { p.brinde = true; }
+  else if (op === 'vincular_historico') { p.historicoVinculado = extra.hid; }
+  else if (op === 'descartar_historico') { p.sugestaoDescartada = true; }
 }
 async function fazerAcao(id, op, extra) {
   const p = App.E && App.E.pedidos.find(x => x.id === id); if (!p) return false;

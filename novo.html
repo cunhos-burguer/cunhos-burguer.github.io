@@ -488,8 +488,8 @@ button{ font-family:inherit; }
   <div class="stitle">👤 Seus dados</div>
   <div class="igroup">
     <div class="iwrap">
-      <label class="ilabel" for="cli-nome">Nome completo</label>
-      <input class="ifield" type="text" id="cli-nome" placeholder="Seu nome" autocomplete="name" oninput="limparErro('cli-nome')">
+      <label class="ilabel" for="cli-nome">Nome e sobrenome *</label>
+      <input class="ifield" type="text" id="cli-nome" placeholder="Ex.: Maria Souza" autocomplete="name" oninput="limparErro('cli-nome')">
       <div class="ierr" role="alert"></div>
     </div>
     <div class="iwrap">
@@ -1748,7 +1748,7 @@ function abrirPagamentoInterno(){
   // Confere na mesma ordem da tela: nome → CEP → rua → número → bairro
   const cepOk = valorCampo('cli-cep').replace(/\D/g,'').length === 8;
   const faltando = [
-    ['cli-nome',   'Informe seu nome para continuar',  () => !!valorCampo('cli-nome')],
+    ['cli-nome',   'Informe nome e sobrenome',         nomeCompletoOk],
     ['cli-tel',    'Informe seu WhatsApp com DDD',     telefoneValido],
     ['cli-cep',    'Informe o CEP (8 números)',        () => cepOk],
     ['cli-rua',    'Informe a rua da entrega',         () => !!valorCampo('cli-rua')],
@@ -1835,6 +1835,10 @@ function mascaraTel(v){
   return '(' + d.slice(0,2) + ') ' + d.slice(2,7) + '-' + d.slice(7);
 }
 function telDigitado(el){ el.value = mascaraTel(el.value); }
+/* nome + sobrenome (ajuda o atendimento a reconhecer clientes que já pediram antes) */
+function nomeCompletoOk(){
+  return valorCampo('cli-nome').split(/\s+/).filter(p => p.replace(/[^A-Za-zÀ-ÿ]/g,'').length >= 2).length >= 2;
+}
 function telefoneValido(){
   let d = valorCampo('cli-tel').replace(/\D/g,'');
   if (d.length >= 12 && d.indexOf('55') === 0) d = d.slice(2);

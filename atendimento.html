@@ -34,6 +34,8 @@ summary { cursor:pointer; color:var(--mudo); font-size:13px; padding:4px 0; }
 .ed .duas { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .help { background:#1b1b1b; border:1px dashed var(--borda); border-radius:12px; padding:10px; font-size:13px; color:var(--mudo); margin-bottom:12px; }
 code { background:#000; padding:1px 5px; border-radius:5px; color:#ffb27a; }
+.antigo { background:rgba(255,107,0,.10); border:1px dashed var(--laranja); border-radius:12px; padding:9px 11px; margin:6px 0; font-size:14px; display:flex; flex-direction:column; gap:8px; }
+.antigo-lin { display:flex; flex-direction:column; gap:6px; }
 .filtros { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
 .filtro { border:1px solid var(--borda); background:var(--card2); color:var(--mudo); border-radius:999px; padding:0 12px; min-height:38px; font-size:13px; font-weight:700; }
 .filtro.on { background:var(--laranja); border-color:var(--laranja); color:#000; }
@@ -80,7 +82,16 @@ function chipsCliente(p, E) {
   if (ehRecorrente(p) && p.anteriorEm) c.push(`<span class="chip">📅 Último pedido: ${quandoFoi(p.anteriorEm)}</span>`);
   if (brindeDevido(cli, p, E) && !p.brinde) c.push('<span class="chip verde">🎁 Sugerir brinde</span>');
   if (p.brinde) c.push('<span class="chip verde">🎁 Brinde dado</span>');
+  if (p.historicoVinculado) c.push('<span class="chip laranja">🕘 histórico antigo vinculado</span>');
   return c.join('');
+}
+/* "Possível cliente antigo": o telefone é novo, mas o endereço (ou o nome) bate com alguém da lista de antes do painel */
+function sugestaoHistorico(p) {
+  if (p.historicoVinculado || p.sugestaoDescartada || !p.sugestoes || !p.sugestoes.length || ['entregue', 'cancelado'].includes(p.status)) return '';
+  return `<div class="antigo"><b>🕘 Possível cliente antigo${p.teste ? ' (teste: não altera nada)' : ''}</b>` +
+    p.sugestoes.map(s => `<div class="antigo-lin"><span><b>${esc(s.nomes)}</b>${s.endereco ? ' <span class="mudo">· ' + esc(s.endereco) + '</span>' : ''} · ${s.pedidos} pedido${s.pedidos > 1 ? 's' : ''} antigo${s.pedidos > 1 ? 's' : ''}</span>` +
+      `<button class="btn peq ok" data-a="vincular" data-hid="${esc(s.hid)}" type="button">É o mesmo cliente</button></div>`).join('') +
+    `<button class="btn peq" data-a="descartar" type="button">Não é nenhum desses</button></div>`;
 }
 function cartao(p) {
   const E = App.E, a = p.cliente.endereco;
@@ -100,6 +111,7 @@ function cartao(p) {
     <div class="linha1"><span class="num">#${p.numero}</span><span class="nome">${esc(p.cliente.nome)}</span><span class="chip" style="margin-left:auto">${ROTULO[p.status]}</span></div>
     <div class="mudo">${esc(fmtTel(p.cliente.telefone))} · ${esc(a.bairro)} · chegou às ${hhmm(p.criadoEm)}</div>
     <div class="chips">${chipsCliente(p, E)}</div>
+    ${sugestaoHistorico(p)}
     <div class="resumo-itens"><b>${brl(p.total)}</b> · ${esc(resumoItens(p).join(' · '))}</div>
     ${relogio}
     <div class="acoes">
@@ -148,6 +160,8 @@ App.redesenhar = () => { renderPedidos(); if (aba === 'clientes') renderClientes
 $('#v-pedidos').addEventListener('click', ev => {
   const b = ev.target.closest('[data-a]'); if (!b) return; const id = b.closest('.cartao').dataset.id, a = b.dataset.a;
   if (a === 'mensagens') return abrirMensagens(id);
+  if (a === 'vincular') return fazer(id, 'vincular_historico', { hid: b.dataset.hid });
+  if (a === 'descartar') return fazer(id, 'descartar_historico');
   if (a === 'cancelar') { if (!confirm('Cancelar este pedido?')) return; return fazer(id, 'cancelar', { motivo: 'cancelado no atendimento' }); }
   fazer(id, a);
 });
