@@ -267,6 +267,9 @@ button{ font-family:inherit; }
   .oact{ gap:6px; }
   .obtn{ padding:0 10px; }
 }
+.pay-alert{ background:rgba(255,107,0,.12); border:1px dashed var(--orange); border-radius:12px; padding:12px 14px;
+            margin:14px 0 18px; font-size:14px; line-height:1.5; color:#ffe1c9; text-align:left; }
+.pay-alert b{ color:#fff; }
 .btn-retry{ margin-top:24px; width:100%; background:var(--orange); color:#000; border:none; border-radius:12px;
             min-height:52px; font-weight:800; font-size:15px; cursor:pointer; }
 
@@ -993,7 +996,7 @@ function cardHtml(p){
       + '</div>';
   } else {
     corpo += '<div class="pprice">' + fmtUi(p.base) + '</div>'
-      + '<div class="psz-note">Versão completa: +' + fmtUi(p.completoAdd) + ' (granola + leite à sua escolha)</div>';
+      + '<div class="psz-note">Versão completa: +' + fmtUi(p.completoAdd) + ' (granola + mais 1 opção à sua escolha)</div>';
   }
   const clique = p.type === 'bebida' ? "adicionarBebida('" + p.id + "')" : "abrirMontCard('" + p.id + "')";
   return '<article class="pcard" data-pid="' + p.id + '">'
@@ -1743,15 +1746,11 @@ function abrirPagamentoInterno(){
       + '<button class="pay-send" onclick="enviarPedido()">📲 Enviar pedido no WhatsApp</button>'
       + '<div class="pay-note">Envie também o comprovante na mesma conversa 📸</div>';
   } else if (comPix) {
-    // Modo mobile: o Pix (já com a entrega) vai direto na mensagem do WhatsApp
+    // Modo mobile: o Pix (já com a entrega) vai no fim da mensagem do WhatsApp; o link só existe depois de ENVIAR.
     html = '<div class="big-icon">📲</div>'
-      + '<div class="pay-step" style="text-align:center">Tudo pronto!</div>'
+      + '<div class="pay-step" style="text-align:center">Quase lá!</div>'
       + linhaTotal
-      + passosHtml([
-          'Toque abaixo — o WhatsApp vai abrir com o pedido e o <b>link do Pix</b>',
-          '<b>Copie o código Pix</b> e pague no seu banco',
-          'Envie o <b>comprovante</b> na mesma conversa',
-        ])
+      + '<div class="pay-alert">Assim que enviar a mensagem no WhatsApp, <b>clique no link de pagamento</b>.</div>'
       + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido com Pix</button>';
   } else if (PAGAMENTO === 'pix') {
     // Pix, mas a entrega ainda não tem valor: a equipe manda o Pix com o total
