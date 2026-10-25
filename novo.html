@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Cunho's Burguer — Fazer Pedido</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root{ --orange:#FF6B00; --orange-dark:#e55e00; --bg:#0f0f0f; --card:#1a1a1a;
+       --card2:#222; --border:#2a2a2a; --red:#ff4444; --green:#4ade80;
+       --muted:#b0a99f; --safe-b:env(safe-area-inset-bottom,0px); }
+html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+body{ background:var(--bg); color:#fff; font-family:'Montserrat',sans-serif;
+      min-height:100vh; padding-bottom:calc(104px + var(--safe-b)); }
+button{ font-family:inherit; }
+:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+@media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } *{ transition:none !important; animation:none !important; } }
+
+/* LOADING */
+.loading-ov{ position:fixed; inset:0; background:#070603; z-index:99999;
+             display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+.loading-ov.hide{ display:none; }
+.loading-logo{ font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:4px; color:#efe6dc; }
+.loading-logo span{ color:#FF6B00; }
+.loading-dots{ display:flex; gap:8px; }
+.loading-dots div{ width:10px; height:10px; border-radius:50%; background:#FF6B00; animation:bounce 1.2s infinite; }
+.loading-dots div:nth-child(2){ animation-delay:.2s; }
+.loading-dots div:nth-child(3){ animation-delay:.4s; }
+@keyframes bounce{ 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+/* TOPO: identidade + estado da loja + categorias */
+.topbar{ background:#000; padding-top:env(safe-area-inset-top,0px); }
+.header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; }
+.logo{ font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:3px; line-height:1; }
+.logo span{ color:var(--orange); }
+.logo-sub{ font-size:10px; color:#9a938a; letter-spacing:.5px; margin-top:3px; }
+.status{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:6px 10px;
+         border-radius:999px; background:rgba(74,222,128,.12); color:var(--green); white-space:nowrap; }
+.status::before{ content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+.status.partial{ background:rgba(255,107,0,.14); color:#ff9a4d; }
+.chips{ position:sticky; top:0; z-index:100; background:#000; border-bottom:1px solid #1f1f1f;
+        padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.chips::-webkit-scrollbar{ display:none; }
+.chip{ flex:0 0 auto; background:var(--card2); color:#e6e0d8; border:1px solid var(--border); border-radius:999px;
+       padding:0 15px; min-height:40px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.chip.on{ background:var(--orange); color:#000; border-color:var(--orange); }
+
+.section{ padding:18px 16px 4px; max-width:980px; margin:0 auto; scroll-margin-top:72px; }
+.stitle{ font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--orange);
+         letter-spacing:2px; margin-bottom:12px; }
+.ssub{ font-size:12px; color:var(--muted); margin:-6px 0 12px; line-height:1.5; }
+
+/* CARDS DE PRODUTO: foto em cima, informações embaixo */
+.cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+.pcard{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+        display:flex; flex-direction:column; }
+.pcard.sold-out{ opacity:.6; }
+.pimg{ position:relative; aspect-ratio:1/1; background:linear-gradient(145deg,#2a2522,#141312); overflow:hidden; }
+.pimg.can img, .pimg.fit img{ object-fit:contain; object-position:center; }  /* latas e açaís: foto INTEIRA e centralizada, mesma escala entre versões */
+.pimg-bg{ position:absolute; inset:-30px; background-size:cover; background-position:center;
+          filter:blur(34px) brightness(.45) saturate(.9); }
+.pimg img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.pimg-ph{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+          justify-content:center; gap:6px; color:#8a8279; font-size:11px; letter-spacing:.5px; }
+.pimg-ph .ph-i{ font-size:44px; line-height:1; opacity:.85; }
+.foto-tag{ position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.75); color:#f0ebe4;
+           font-size:10px; font-weight:600; padding:4px 9px; border-radius:999px; }
+.pbody{ padding:14px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; }
+.pname{ font-weight:800; font-size:16px; line-height:1.25; }
+.pdesc{ font-size:12.5px; color:var(--muted); line-height:1.55; }
+.pprice{ font-size:18px; font-weight:800; color:var(--orange); }
+.psizes{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.psz{ position:relative; background:var(--card2); border:2px solid var(--border); border-radius:12px;
+      padding:10px 6px; text-align:center; cursor:pointer; color:#e6e0d8; min-height:60px; }
+.psz[aria-checked="true"]{ border-color:var(--orange); background:rgba(255,107,0,.1); }
+.psz[aria-checked="true"]::after{ content:'✓'; position:absolute; top:5px; right:8px; font-size:11px;
+                                  font-weight:900; color:var(--orange); }
+.psz:disabled{ opacity:.45; cursor:not-allowed; }
+.psz-g{ display:block; font-weight:800; font-size:14px; }
+.psz-s{ display:block; font-size:10.5px; color:var(--muted); margin-top:1px; }
+.psz-p{ display:block; font-size:14.5px; font-weight:800; color:#ff9a4d; margin-top:3px; }
+.psz-note{ font-size:11.5px; color:var(--muted); line-height:1.5; }
+.pcta{ background:var(--orange); color:#000; border:none; border-radius:12px; min-height:48px;
+       padding:12px 14px; font-weight:800; font-size:14px; cursor:pointer; margin-top:auto; }
+.pcta:active{ background:var(--orange-dark); }
+.pcta:disabled{ background:#2a2a2a; color:#9a9a9a; cursor:not-allowed; }
+.tag-esg{ display:inline-block; background:var(--red); color:#fff; font-size:9px;
+          font-weight:700; letter-spacing:1px; padding:2px 7px; border-radius:20px;
+          margin-left:6px; vertical-align:middle; white-space:nowrap; }
+
+/* SACOLA */
+.empty{ text-align:center; padding:26px 16px; color:var(--muted); font-size:13px; line-height:1.6;
+        background:var(--card); border:1px dashed var(--border); border-radius:14px; }
+.empty-i{ font-size:34px; margin-bottom:8px; }
+.olist{ display:flex; flex-direction:column; gap:10px; }
+.oitem{ background:var(--card); border-radius:14px; border:1px solid var(--border);
+        border-left:3px solid var(--orange); padding:13px 14px; display:flex; flex-direction:column; gap:9px; }
+.otop{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.oname{ font-size:14px; font-weight:800; display:flex; align-items:center; gap:6px; }
+.oprice{ font-size:14px; font-weight:800; color:#ff9a4d; white-space:nowrap; text-align:right; }
+.ounit{ display:block; font-size:10.5px; font-weight:600; color:var(--muted); }
+.otags{ display:flex; flex-wrap:wrap; gap:4px; }
+.tag{ font-size:10.5px; padding:3px 8px; border-radius:20px; font-weight:600; }
+.tg{ background:#2a2a2a; color:#d2ccc4; }
+.tup{ background:rgba(255,107,0,.18); color:#ff9a4d; }
+.trm{ background:rgba(255,68,68,.14); color:#ff8a8a; }
+.oact{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.qty{ display:inline-flex; align-items:center; background:var(--card2); border:1px solid var(--border); border-radius:10px; }
+.qty button{ width:42px; height:42px; background:none; border:none; color:#fff; font-size:20px;
+             font-weight:800; cursor:pointer; border-radius:10px; }
+.qty button:disabled{ color:#666; cursor:not-allowed; }
+.qty output{ min-width:30px; text-align:center; font-weight:800; font-size:14px; }
+.obtn{ background:var(--card2); border:1px solid var(--border); color:#e6e0d8; border-radius:10px;
+       padding:0 14px; min-height:42px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.obtn.edit{ border-color:var(--orange); color:#ff9a4d; }
+.obtn.del{ margin-left:auto; color:#ff8a8a; border-color:rgba(255,68,68,.35); }
+
+/* DADOS */
+.igroup{ display:flex; flex-direction:column; gap:12px; }
+.iwrap{ display:flex; flex-direction:column; gap:5px; }
+.ilabel{ font-size:10.5px; font-weight:700; color:#a39c92; letter-spacing:1px; text-transform:uppercase; }
+.ifield{ background:var(--card); border:1px solid var(--border); border-radius:10px;
+         color:#fff; font-family:'Montserrat',sans-serif; font-size:16px; padding:13px 14px;
+         outline:none; width:100%; }
+.ifield:focus{ border-color:var(--orange); }
+.ifield::placeholder{ color:#6d675f; }
+.ierr{ display:none; font-size:12px; color:#ff8a8a; }
+.iwrap.err .ierr{ display:block; }
+.iwrap.err .ifield{ border-color:var(--red); }
+
+/* ENDEREÇO / PAGAMENTO / RESUMO */
+.row2{ display:flex; gap:10px; }
+.cep-msg{ font-size:11.5px; color:#9a938a; min-height:0; }
+.cep-msg.err{ color:#ff8a8a; }
+.cep-msg.ok{ color:#4ade80; }
+.pagopts{ display:flex; flex-direction:column; gap:8px; }
+.pagopt{ display:flex; align-items:center; gap:12px; background:var(--card); border:2px solid var(--border);
+         border-radius:13px; padding:14px; cursor:pointer; min-height:56px; }
+.pagopt.on{ border-color:var(--orange); background:rgba(255,107,0,.08); }
+.pagopt .rd{ width:20px; height:20px; border-radius:50%; border:2px solid #666; flex-shrink:0;
+             display:flex; align-items:center; justify-content:center; }
+.pagopt.on .rd{ border-color:var(--orange); }
+.pagopt.on .rd::after{ content:''; width:10px; height:10px; border-radius:50%; background:var(--orange); }
+.pagopt .pt{ font-size:14px; font-weight:700; }
+.pagopt .pd{ font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.4; }
+.rec{ font-size:9px; background:var(--orange); color:#000; padding:2px 7px; border-radius:20px;
+      margin-left:6px; vertical-align:middle; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
+.resumo{ background:var(--card); border:1px solid var(--border); border-radius:13px; padding:14px 15px;
+         display:flex; flex-direction:column; gap:8px; }
+.rl{ display:flex; justify-content:space-between; gap:10px; font-size:13px; color:#c9c3bb; }
+.rl span:last-child{ white-space:nowrap; font-weight:600; color:#fff; }
+.rl.rt{ border-top:1px solid var(--border); padding-top:9px; font-size:15px; font-weight:700; color:#fff; }
+.rl.rt span:last-child{ color:#ff9a4d; }
+.res-nota{ font-size:12px; color:#b8b1a7; line-height:1.5; }
+.res-nota:empty{ display:none; }
+
+/* TELA DE PERSONALIZAÇÃO */
+.mont{ display:none; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; }
+.mont.show{ display:flex; }
+.mont-head{ background:#000; padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px; display:flex;
+            align-items:center; gap:12px; border-bottom:1px solid #222; flex-shrink:0; }
+.mont-x{ background:var(--card2); border:none; color:#eee; width:44px; height:44px;
+         border-radius:50%; font-size:20px; cursor:pointer; flex-shrink:0; }
+.mont-mode{ font-size:10.5px; color:#ff9a4d; font-weight:700; letter-spacing:.8px; text-transform:uppercase; }
+.mont-title{ font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:1px; line-height:1.1; }
+.mont-body{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.mont-inner{ max-width:640px; margin:0 auto; padding:0 16px 28px; display:flex; flex-direction:column; gap:20px; }
+.mont-hero{ margin:0 -16px; }
+.mont-hero .pimg{ width:min(100%, 52vh); margin:0 auto; }  /* quadrada; em telas baixas encolhe em vez de cortar o pão */
+.mont-info{ font-size:13px; color:var(--muted); line-height:1.6; }
+.mont-size{ display:inline-block; background:rgba(255,107,0,.12); border:1px solid var(--orange); color:#ffb27a;
+            font-weight:800; font-size:13px; padding:6px 12px; border-radius:999px; margin-bottom:12px; }
+.mont-info b{ display:block; font-size:10.5px; color:#a39c92; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:4px; }
+#mont-opts{ display:flex; flex-direction:column; gap:22px; }
+.blk-label{ display:block; font-size:10.5px; font-weight:700; color:#a39c92; letter-spacing:1.5px;
+            text-transform:uppercase; margin-bottom:9px; }
+.sizes{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.sz{ position:relative; background:var(--card); border:2px solid var(--border); border-radius:14px;
+     padding:14px 8px; text-align:center; cursor:pointer; color:#e6e0d8; }
+.sz.on{ border-color:var(--orange); background:rgba(255,107,0,.1); }
+.sz.on::after{ content:'✓'; position:absolute; top:6px; right:9px; font-size:12px; font-weight:900; color:var(--orange); }
+.sz-off{ opacity:.45; }
+.sz-off .sz-p{ color:#ff8a8a; font-weight:700; font-size:11px; }
+.sz-g{ display:block; font-family:'Bebas Neue',sans-serif; font-size:27px; color:#aaa; line-height:1; }
+.sz.on .sz-g{ color:#fff; }
+.sz-s{ display:block; font-size:10.5px; color:var(--muted); margin-top:3px; }
+.sz-p{ display:block; font-size:13.5px; font-weight:800; color:#ff9a4d; margin-top:5px; }
+.sz-d{ display:block; font-size:10.5px; color:var(--muted); margin-top:2px; }
+.pgrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.pbtn{ background:var(--card2); color:#cfc8bf; border:1px solid var(--border); border-radius:9px;
+       padding:0 4px; min-height:44px; font-size:12px; font-weight:600; cursor:pointer; }
+.pbtn.on{ background:var(--orange); color:#000; border-color:var(--orange); font-weight:800; }
+.opts{ display:flex; flex-direction:column; gap:7px; }
+.opt{ display:flex; align-items:center; gap:11px; background:var(--card2); border-radius:10px;
+      padding:12px; cursor:pointer; border:1px solid transparent; width:100%; text-align:left;
+      color:inherit; font:inherit; min-height:48px; }
+.opt.on-add{ border-color:var(--orange); background:rgba(255,107,0,.1); }
+.opt.on-rem{ border-color:var(--red); background:rgba(255,68,68,.1); }
+.cb{ width:20px; height:20px; border-radius:5px; border:2px solid #666; display:flex;
+     align-items:center; justify-content:center; flex-shrink:0; }
+.on-add .cb{ background:var(--orange); border-color:var(--orange); }
+.on-rem .cb{ background:var(--red); border-color:var(--red); }
+.ck{ display:none; color:#000; font-size:11px; font-weight:900; }
+.on-add .ck, .on-rem .ck{ display:block; }
+.otxt{ flex:1; font-size:13px; color:#d2ccc4; }
+.opt.on-add .otxt, .opt.on-rem .otxt{ color:#fff; }
+.oplus{ font-size:12.5px; font-weight:700; color:#ff9a4d; white-space:nowrap; }
+.obs{ background:var(--card2); border:1px solid var(--border); border-radius:10px;
+      color:#fff; font-family:'Montserrat',sans-serif; font-size:16px; padding:12px;
+      width:100%; resize:none; min-height:70px; outline:none; }
+.obs:focus{ border-color:var(--orange); }
+.obs::placeholder{ color:#6d675f; }
+.mont-foot{ background:#000; border-top:1px solid #1e1e1e; padding:12px 16px calc(12px + var(--safe-b)); flex-shrink:0; }
+.mont-foot-in{ max-width:640px; margin:0 auto; display:flex; gap:10px; align-items:stretch; }
+.confirm{ flex:1; background:var(--orange); color:#000; border:none; border-radius:12px;
+          padding:0 12px; min-height:52px; font-family:'Montserrat',sans-serif; font-weight:800; font-size:14px;
+          line-height:1.2; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left; }
+.confirm span:last-child{ white-space:nowrap; }
+.confirm:active{ background:var(--orange-dark); }
+
+/* BARRA INFERIOR */
+.bar{ position:fixed; bottom:0; left:0; right:0; background:#000; border-top:1px solid #1e1e1e;
+      padding:10px 16px calc(10px + var(--safe-b)); z-index:200; }
+.bar-in{ max-width:980px; margin:0 auto; display:flex; align-items:center; gap:12px; }
+/* Botão da sacola: parece botão (borda, ícone com contador e seta), ao lado de "Finalizar pedido" */
+.bag{ background:var(--card2); border:1.5px solid #3a3a3a; border-radius:12px; color:inherit; text-align:left; cursor:pointer;
+      display:flex; align-items:center; gap:9px; flex:0 0 auto; min-width:0; min-height:52px; padding:4px 10px 4px 8px; }
+.bag:active{ border-color:var(--orange); }
+.bag-ic{ position:relative; font-size:24px; line-height:1; width:34px; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.bag-badge{ position:absolute; top:-5px; right:-6px; min-width:19px; height:19px; padding:0 5px; border-radius:999px;
+            background:var(--orange); color:#000; font-size:11px; font-weight:800; line-height:19px; text-align:center; }
+.bag-tx{ display:flex; flex-direction:column; min-width:0; }
+.bag-go{ color:var(--orange); font-size:12px; margin-left:-2px; }
+.tl{ font-size:11px; color:var(--muted); letter-spacing:.3px; white-space:nowrap; }
+.tv{ font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--orange); line-height:1; }
+.pay{ flex:1; background:var(--orange); color:#000; border:none; border-radius:12px;
+      padding:0 15px; min-height:52px; font-family:'Montserrat',sans-serif; font-weight:800; font-size:15px;
+      cursor:pointer; }
+.pay:disabled{ background:#2a2a2a; color:#9a9a9a; cursor:not-allowed; }
+
+/* AVISO CURTO (adicionado / editado / removido) */
+.snack{ position:fixed; left:50%; bottom:calc(92px + var(--safe-b)); transform:translateX(-50%) translateY(16px);
+        opacity:0; pointer-events:none; background:#262626; border:1px solid #3a3a3a; color:#fff;
+        padding:10px 14px; border-radius:12px; font-size:13px; font-weight:600; display:flex;
+        align-items:center; gap:12px; z-index:450; width:max-content; max-width:calc(100vw - 32px); transition:opacity .2s, transform .2s; }
+.snack.show{ opacity:1; transform:translateX(-50%); pointer-events:auto; }
+.snack button{ background:none; border:none; color:#ff9a4d; font-weight:800; font-size:13px; cursor:pointer;
+               min-height:40px; padding:0 4px; white-space:nowrap; }
+#mont-confirm-txt{ min-width:0; }
+.pay{ min-width:0; }
+@media (max-width:380px){
+  .bar-in{ gap:8px; }
+  .bag{ padding:4px 8px 4px 6px; gap:6px; }
+  .bag-go{ display:none; }
+  .tl{ font-size:10px; }
+  .tv{ font-size:22px; }
+  .pay{ font-size:14px; padding:0 8px; }
+}
+@media (max-width:360px){
+  .chips{ gap:6px; }
+  .chip{ padding:0 10px; font-size:12px; }
+  #mont-qty button{ width:36px; }
+  .confirm{ font-size:13px; }
+  .oact{ gap:6px; }
+  .obtn{ padding:0 10px; }
+}
+.pay-alert{ background:rgba(255,107,0,.12); border:1px dashed var(--orange); border-radius:12px; padding:12px 14px;
+            margin:14px 0 18px; font-size:14px; line-height:1.5; color:#ffe1c9; text-align:left; }
+.pay-alert b{ color:#fff; }
+.btn-retry{ margin-top:24px; width:100%; background:var(--orange); color:#000; border:none; border-radius:12px;
+            min-height:52px; font-weight:800; font-size:15px; cursor:pointer; }
+
+/* TELA DE PAGAMENTO */
+.pay-ov{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:600;
+         align-items:flex-start; justify-content:center; padding:20px 16px; overflow-y:auto; }
+.pay-ov.show{ display:flex; }
+.pay-card{ background:var(--card); border:1px solid var(--border); border-radius:20px;
+           padding:26px 20px 22px; max-width:360px; width:100%; text-align:center;
+           position:relative; margin:auto; }
+.pay-x{ position:absolute; top:12px; right:12px; background:var(--card2); border:none;
+        color:#888; width:30px; height:30px; border-radius:50%; font-size:14px; cursor:pointer; }
+.pay-step{ font-family:'Bebas Neue',sans-serif; font-size:17px; color:var(--orange);
+           letter-spacing:2px; margin-bottom:4px; }
+.pay-tl{ font-size:10px; color:#777; letter-spacing:1px; text-transform:uppercase; margin-top:10px; }
+.pay-total{ font-family:'Bebas Neue',sans-serif; font-size:46px; color:var(--orange);
+            line-height:1.05; margin-bottom:14px; }
+.pay-qr{ background:#fff; border-radius:14px; padding:12px; display:inline-block; margin-bottom:10px; }
+.pay-qr img{ display:block; width:210px; height:210px; }
+.pay-hint{ font-size:12px; color:#888; margin-bottom:14px; }
+.pay-copy{ width:100%; background:var(--card2); color:#ddd; border:1px solid var(--border);
+           border-radius:11px; padding:13px; font-family:'Montserrat',sans-serif;
+           font-weight:600; font-size:13px; cursor:pointer; }
+.pay-copy:active{ border-color:var(--orange); color:var(--orange); }
+.code-hidden{ display:none; }
+.pay-div{ display:flex; align-items:center; gap:10px; margin:20px 0 16px; }
+.pay-div::before, .pay-div::after{ content:''; flex:1; height:1px; background:var(--border); }
+.pay-div span{ font-size:9px; color:#666; letter-spacing:2px; white-space:nowrap; }
+.pay-send{ width:100%; background:var(--orange); color:#000; border:none; border-radius:12px;
+           padding:17px; font-family:'Montserrat',sans-serif; font-weight:700; font-size:14.5px;
+           cursor:pointer; margin-top:4px; }
+.pay-send:active{ background:var(--orange-dark); }
+.pay-note{ font-size:11px; color:#777; margin-top:10px; }
+
+/* PASSO A PASSO (fluxo sem Pix na tela) */
+.steps{ display:flex; flex-direction:column; gap:14px; text-align:left; margin:18px 0 22px; }
+.step{ display:flex; align-items:flex-start; gap:12px; }
+.step-n{ background:var(--orange); color:#000; font-family:'Bebas Neue',sans-serif;
+         font-size:16px; width:26px; height:26px; border-radius:50%; flex-shrink:0;
+         display:flex; align-items:center; justify-content:center; margin-top:1px; }
+.step-txt{ font-size:13.5px; color:#ddd; line-height:1.5; padding-top:2px; }
+.step-txt b{ color:#fff; }
+.big-icon{ font-size:48px; text-align:center; margin-bottom:6px; }
+.pay-send-full{ width:100%; background:var(--orange); color:#000; border:none; border-radius:12px;
+           padding:17px; font-family:'Montserrat',sans-serif; font-weight:700; font-size:15px;
+           cursor:pointer; }
+.pay-send-full:active{ background:var(--orange-dark); }
+
+/* ═══ TELA DE LOJA FECHADA ═══ */
+.fechado{
+  display:none;
+  position:fixed; inset:0; z-index:9000;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 108%, rgba(255,107,0,.28), transparent 66%),
+    #070603;
+  overflow-y:auto;
+}
+.fechado.show{ display:flex; align-items:center; justify-content:center; padding:28px 22px; }
+.fechado-in{ max-width:340px; width:100%; text-align:center; margin:auto; }
+
+.f-brand{ font-family:'Bebas Neue',sans-serif; font-size:19px; color:#efe6dc;
+          letter-spacing:5px; line-height:1; }
+.f-brand span{ color:var(--orange); }
+.f-rule{ width:34px; height:2px; background:var(--orange); margin:10px auto 0; }
+
+.f-icon{ font-size:52px; margin:28px 0 6px; }
+.f-title{ font-family:'Bebas Neue',sans-serif; line-height:.86; letter-spacing:1.5px; }
+.f-title .a{ display:block; font-size:40px; color:#f5ece2; }
+.f-title .b{ display:block; font-size:56px; color:var(--orange);
+             text-shadow:0 0 36px rgba(255,110,0,.5); }
+.f-thanks{ font-size:12.5px; color:#9a8b7d; margin-top:14px; line-height:1.6; }
+
+.f-card{
+  margin-top:26px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,180,110,.18);
+  border-radius:16px; padding:20px 18px;
+}
+.f-cap{ font-size:9px; font-weight:800; letter-spacing:3px; color:#7d6656;
+        text-transform:uppercase; }
+.f-day{ font-family:'Bebas Neue',sans-serif; font-size:32px; color:#fff;
+        letter-spacing:1px; margin-top:6px; line-height:1; }
+.f-hours{ display:flex; flex-direction:column; gap:11px; margin-top:18px; }
+.f-hour{ display:flex; align-items:center; gap:11px; text-align:left; }
+.f-hour-i{ font-size:19px; width:26px; flex-shrink:0; text-align:center; }
+.f-hour-t{ font-size:12.5px; color:#bbaa9c; line-height:1.4; }
+.f-hour-t b{ color:var(--orange); font-size:15px; }
+
+.f-note{ font-size:11.5px; color:#7a6a5c; margin-top:24px; line-height:1.6; }
+.f-note b{ color:#c9b8a8; }
+
+/* AVISO */
+.toast{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+        background:var(--red); color:#fff; padding:22px 26px; border-radius:16px;
+        font-size:17px; font-weight:700; line-height:1.45; text-align:center;
+        z-index:999; display:none; max-width:300px;
+        box-shadow:0 10px 40px rgba(0,0,0,.7); border:2px solid rgba(255,255,255,.15); }
+.toast.ok{ background:#1e9e4a; }
+
+/* MODAL COMPROVANTE */
+.modal-ov{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:700;
+           align-items:center; justify-content:center; padding:24px; }
+.modal-ov.show{ display:flex; }
+.modal-card{ background:var(--card); border:1px solid var(--border); border-radius:18px;
+             padding:26px 22px; max-width:340px; width:100%; text-align:center; }
+.modal-i{ font-size:44px; margin-bottom:10px; }
+.modal-t{ font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--orange);
+          letter-spacing:1px; line-height:1.1; }
+.modal-txt{ font-size:13.5px; color:#bbb; line-height:1.6; margin-top:12px; }
+.modal-alert{ background:rgba(255,107,0,.12); border:1px dashed var(--orange);
+              border-radius:12px; padding:14px; margin-top:16px; font-size:13px;
+              color:#eee; line-height:1.55; }
+.modal-btn{ width:100%; margin-top:18px; background:var(--orange); color:#000; border:none;
+            border-radius:11px; padding:14px; font-family:'Montserrat',sans-serif;
+            font-weight:700; font-size:13.5px; cursor:pointer; }
+.modal-close{ background:transparent; border:none; color:#666;
+              font-family:'Montserrat',sans-serif; font-size:12px; margin-top:10px;
+              cursor:pointer; width:100%; }
+</style>
+</head>
+<body>
+
+<!-- LOADING (some while fetching Google Sheets config) -->
+<div class="loading-ov" id="loading-ov">
+  <div class="loading-logo">CUNHO'S <span>BURGUER</span></div>
+  <div class="loading-dots"><div></div><div></div><div></div></div>
+</div>
+
+<div class="topbar" id="topbar">
+  <header class="header">
+    <div>
+      <div class="logo">CUNHO'S <span>BURGUER</span></div>
+      <div class="logo-sub">Hambúrguer artesanal · Indaiatuba</div>
+    </div>
+    <div class="status" id="status-loja" role="status">Aberto</div>
+  </header>
+</div>
+<nav class="chips" id="chips" aria-label="Categorias do cardápio">
+  <button type="button" class="chip on" data-sec="sec-burger" onclick="irPara('sec-burger')">🍔 Hambúrgueres</button>
+  <button type="button" class="chip" data-sec="sec-bebida" onclick="irPara('sec-bebida')">🥤 Bebidas</button>
+  <button type="button" class="chip" data-sec="sec-acai" onclick="irPara('sec-acai')">🫐 Açaí</button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="snack" id="snack" role="status" aria-live="polite"><span id="snack-txt"></span><button type="button" id="snack-btn" style="display:none"></button></div>
+
+<!-- TELA DE LOJA FECHADA -->
+<div class="fechado" id="fechado">
+  <div class="fechado-in">
+    <div class="f-brand">CUNHO'S <span>BURGUER</span></div>
+    <div class="f-rule"></div>
+
+    <div class="f-icon" id="f-icone">😴</div>
+    <h1 class="f-title">
+      <span class="b" id="f-titulo">O CHURRASQUEIRO TIROU O DIA</span>
+    </h1>
+
+    <div class="f-card">
+      <p class="f-thanks" id="f-texto" style="color:#bbaa9c;font-size:13.5px;line-height:1.7;text-align:left;">
+        Hoje a gente deu uma pausa, mas a brasa esquenta de novo em breve!
+      </p>
+    </div>
+
+    <p class="f-note">
+      <b>Salve este link</b> e faça seu pedido quando abrirmos.<br>
+      Te esperamos! 🔥
+    </p>
+  </div>
+</div>
+
+<div class="aviso-parcial" id="aviso-parcial" style="display:none; margin:16px 16px 0; background:rgba(255,107,0,.08); border:1px dashed var(--orange); border-radius:14px; padding:16px;">
+  <div style="display:flex; gap:12px; align-items:flex-start;">
+    <div id="aviso-parcial-icone" style="font-size:30px; line-height:1;">😴</div>
+    <div style="flex:1; min-width:0;">
+      <div id="aviso-parcial-titulo" style="font-family:'Bebas Neue',sans-serif; font-size:17px; color:var(--orange); letter-spacing:1px; line-height:1.15;"></div>
+      <div id="aviso-parcial-texto" style="font-size:11.5px; color:#ccc; line-height:1.55; margin-top:6px;"></div>
+      <div style="font-size:10.5px; color:#FF6B00; font-weight:700; letter-spacing:.5px; margin-top:8px;">🫐 Mas o açaí a gente entrega sempre — pode pedir!</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="sec-burger">
+  <div class="stitle">🍔 Hambúrgueres</div>
+  <div class="ssub">Escolha a gramatura, veja o preço final de cada uma e personalize do seu jeito.</div>
+  <div class="cards" id="cards-burger"></div>
+</div>
+
+<div class="section" id="sec-bebida">
+  <div class="stitle">🥤 Bebidas</div>
+  <div class="cards" id="cards-bebida"></div>
+</div>
+
+<div class="section" id="sec-acai">
+  <div class="stitle">🫐 Açaí</div>
+  <div class="cards" id="cards-acai"></div>
+</div>
+
+<div class="section" id="sec-sacola">
+  <div class="stitle">🛍️ Sua sacola</div>
+  <div class="empty" id="empty">
+    <div class="empty-i">🍔</div>
+    <div>Sua sacola está vazia.<br>Escolha um item acima para começar.</div>
+  </div>
+  <div class="olist" id="olist"></div>
+</div>
+
+<div class="section" id="sec-dados">
+  <div class="stitle">👤 Seus dados</div>
+  <div class="igroup">
+    <div class="iwrap">
+      <label class="ilabel" for="cli-nome">Nome completo</label>
+      <input class="ifield" type="text" id="cli-nome" placeholder="Seu nome" autocomplete="name" oninput="limparErro('cli-nome')">
+      <div class="ierr" role="alert"></div>
+    </div>
+    <div class="iwrap">
+      <label class="ilabel" for="cli-tel">WhatsApp com DDD *</label>
+      <input class="ifield" type="tel" id="cli-tel" inputmode="numeric" maxlength="22" placeholder="(19) 99999-0000" autocomplete="tel" oninput="telDigitado(this);limparErro('cli-tel')">
+      <div class="ierr" role="alert"></div>
+      <div style="font-size:12px;color:#8a8279;margin-top:6px">Usamos seu telefone só para falar sobre o seu pedido.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ENDEREÇO DE ENTREGA -->
+<div class="section" id="sec-endereco">
+  <div class="stitle">📍 Endereço de entrega</div>
+  <div class="igroup">
+    <div class="iwrap">
+      <label class="ilabel" for="cli-cep">CEP * <span style="color:#8a8279;text-transform:none;letter-spacing:0">— preenche rua e bairro</span></label>
+      <input class="ifield" type="text" id="cli-cep" inputmode="numeric" maxlength="9" placeholder="13330-000" autocomplete="postal-code" oninput="cepDigitado(this);limparErro('cli-cep')">
+      <div class="cep-msg" id="cep-msg" role="status"></div>
+      <div class="ierr" role="alert"></div>
+    </div>
+    <div class="iwrap">
+      <label class="ilabel" for="cli-rua">Rua</label>
+      <input class="ifield" type="text" id="cli-rua" placeholder="Ex: Rua das Flores" autocomplete="address-line1" oninput="enderecoMudou();limparErro('cli-rua')">
+      <div class="ierr" role="alert"></div>
+    </div>
+    <div class="row2">
+      <div class="iwrap" style="flex:0 0 34%">
+        <label class="ilabel" for="cli-num">Número *</label>
+        <input class="ifield" type="text" id="cli-num" inputmode="numeric" placeholder="142" oninput="enderecoMudou();limparErro('cli-num')">
+        <div class="ierr" role="alert"></div>
+      </div>
+      <div class="iwrap" style="flex:1;min-width:0">
+        <label class="ilabel" for="cli-bairro">Bairro</label>
+        <input class="ifield" type="text" id="cli-bairro" placeholder="Ex: Centro" oninput="enderecoMudou();limparErro('cli-bairro')">
+        <div class="ierr" role="alert"></div>
+      </div>
+    </div>
+    <div class="iwrap">
+      <label class="ilabel" for="cli-comp">Complemento / referência (opcional)</label>
+      <input class="ifield" type="text" id="cli-comp" placeholder="Apto, bloco, portão azul…">
+    </div>
+  </div>
+</div>
+
+<!-- FORMA DE PAGAMENTO -->
+<div class="section" id="sec-pagamento">
+  <div class="stitle">💳 Pagamento</div>
+  <div class="pagopts" id="pagopts" role="radiogroup" aria-label="Forma de pagamento"></div>
+</div>
+
+<!-- RESUMO -->
+<div class="section" id="sec-resumo" style="display:none">
+  <div class="stitle">🧾 Resumo</div>
+  <div class="resumo">
+    <div class="rl"><span>Produtos</span><span id="res-sub">R$0,00</span></div>
+    <div class="rl"><span id="res-frete-lbl">🛵 Entrega</span><span id="res-frete">—</span></div>
+    <div class="rl rt"><span>Total</span><span id="res-total">R$0,00</span></div>
+    <div class="res-nota" id="res-nota"></div>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <button type="button" class="bag" id="bag" onclick="irSacola()" aria-label="Ver minha sacola">
+      <span class="bag-ic" aria-hidden="true">🛍️<span class="bag-badge" id="bag-badge" style="display:none">0</span></span>
+      <span class="bag-tx">
+        <span class="tl"><span id="total-lbl">Total</span> · <span id="bag-count">sacola vazia</span></span>
+        <span class="tv" id="total">R$0,00</span>
+      </span>
+      <span class="bag-go" aria-hidden="true">▴</span>
+    </button>
+    <button class="pay" id="btn-pay" onclick="abrirPagamento()" disabled>Finalizar pedido</button>
+  </div>
+</div>
+
+<!-- PERSONALIZAÇÃO -->
+<div class="mont" id="mont" role="dialog" aria-modal="true" aria-labelledby="mont-title">
+  <div class="mont-head">
+    <button type="button" class="mont-x" onclick="fecharMont()" aria-label="Voltar ao cardápio">←</button>
+    <div>
+      <div class="mont-mode" id="mont-mode"></div>
+      <div class="mont-title" id="mont-title"></div>
+    </div>
+  </div>
+  <div class="mont-body" id="mont-body">
+    <div class="mont-inner">
+      <div class="mont-hero" id="mont-hero"></div>
+      <div class="mont-info" id="mont-info"></div>
+      <div id="mont-opts"></div>
+    </div>
+  </div>
+  <div class="mont-foot">
+    <div class="mont-foot-in">
+      <div class="qty" id="mont-qty" role="group" aria-label="Quantidade">
+        <button type="button" id="mont-menos" aria-label="Diminuir quantidade" onclick="qtdMont(-1)">−</button>
+        <output id="mont-qtd" aria-live="polite">1</output>
+        <button type="button" id="mont-mais" aria-label="Aumentar quantidade" onclick="qtdMont(1)">+</button>
+      </div>
+      <button type="button" class="confirm" id="mont-confirm" onclick="salvarMont()">
+        <span id="mont-confirm-txt">Adicionar à sacola</span>
+        <span id="mont-preco">R$0,00</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- EDITAR GRUPO DE UNIDADES IGUAIS -->
+<div class="modal-ov" id="dlg-edit" role="dialog" aria-modal="true" aria-labelledby="dlg-edit-t">
+  <div class="modal-card">
+    <div class="modal-t" id="dlg-edit-t">Editar quantas unidades?</div>
+    <div class="modal-txt" id="dlg-edit-txt"></div>
+    <button type="button" class="modal-btn" id="dlg-edit-all"></button>
+    <button type="button" class="modal-btn" id="dlg-edit-one" style="background:var(--card2);color:#fff;border:1px solid var(--border)">Só uma unidade</button>
+    <button type="button" class="modal-close" onclick="fecharDlgEdit()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ERRO AO CARREGAR A CONFIGURAÇÃO: pedidos pausados -->
+<div class="fechado" id="erro-cfg" role="alert">
+  <div class="fechado-in">
+    <div class="f-brand">CUNHO'S <span>BURGUER</span></div>
+    <div class="f-rule"></div>
+    <div class="f-icon">⚠️</div>
+    <h1 class="f-title"><span class="b" style="font-size:40px">NÃO CARREGAMOS O CARDÁPIO</span></h1>
+    <div class="f-card">
+      <p class="f-thanks" style="color:#bbaa9c;font-size:13.5px;line-height:1.7;text-align:left;">
+        Não conseguimos confirmar se estamos abertos agora. Por segurança, os pedidos ficam pausados até a conexão voltar. Verifique sua internet e tente de novo.
+      </p>
+    </div>
+    <button type="button" class="btn-retry" onclick="iniciar()">Tentar novamente</button>
+  </div>
+</div>
+
+<!-- ENVIO / PAGAMENTO -->
+<div class="pay-ov" id="pay-ov">
+  <div class="pay-card" id="pay-card">
+    <button class="pay-x" onclick="fecharPagamento()">✕</button>
+    <div id="pay-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRMAÇÃO -->
+<div class="modal-ov" id="modal-comp">
+  <div class="modal-card" id="modal-comp-body"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   🔗 PLANILHA GOOGLE SHEETS — ID
+   Não altere esta linha. As configurações
+   são gerenciadas direto na planilha.
+   ════════════════════════════════════════════ */
+const SHEETS_ID = '1VYGCspGLGM0YXzluC6O4BZAW5uvL5dhTw14q3DwABxg';
+
+/* ════════════════════════════════════════════
+   ⚙️ SEM CONFIGURAÇÃO PADRÃO NO CÓDIGO
+   A planilha é a ÚNICA fonte de verdade (loja aberta/fechada, preços, estoque,
+   Pix e número do WhatsApp). Se ela não carregar, o site NÃO libera pedidos:
+   mostra um aviso com o botão "Tentar novamente" (ver iniciar()).
+   ════════════════════════════════════════════ */
+
+/* ════ VARIÁVEIS GLOBAIS (preenchidas após carregar config) ════ */
+let WHATSAPP, LOJA_FECHADA, APENAS_ACAI, PROXIMO_DIA, HORA_PEDIDOS, HORA_ENTREGAS, MOSTRAR_PIX_NA_TELA;
+let ESTOQUE, ESTOQUE_VARIANTE, ESTOQUE_CARNE, PIX_CHAVE, PIX_NOME, PIX_CIDADE, MENSAGEM_ATIVA;
+let FRETE_URL = '', ACEITA_CARTAO = false;
+let currentPixId = null; // ID do pedido atual — gerado em abrirPagamento(), usado no Pix e no WhatsApp
+let PRODUCTS, ADICIONAIS, TOPPINGS;
+
+const ICONE_ACAI = '<svg viewBox="0 0 32 32" width="26" height="26"><path d="M6.5 10.5h19l-2 16.2a2.6 2.6 0 0 1-2.6 2.3H11.1a2.6 2.6 0 0 1-2.6-2.3l-2-16.2z" fill="#2E0A3D"/><path d="M7.2 15.6h17.6l-1.3 10.9a2.4 2.4 0 0 1-2.4 2.1h-10.2a2.4 2.4 0 0 1-2.4-2.1L7.2 15.6z" fill="#3F1154"/><ellipse cx="16" cy="10.5" rx="9.5" ry="3.1" fill="#5C1A78"/><ellipse cx="16" cy="10.2" rx="7.6" ry="2.3" fill="#7B279C"/><circle cx="12.6" cy="9.6" r="1.5" fill="#4A1263"/><circle cx="17.9" cy="10.6" r="1.7" fill="#4A1263"/><circle cx="20.4" cy="9.3" r="1.2" fill="#4A1263"/></svg>';
+
+const PONTOS   = ['Ponto −','Ao ponto','Ponto +'];
+const VARIANTES = ['Normal','Zero'];
+
+/* ════ PAINEL DE PEDIDOS ════
+   O pedido é gravado numa planilha PARTICULAR (via Apps Script) para o atendimento e a produção.
+   Se isso falhar ou demorar, o cliente segue exatamente o fluxo de sempre (mensagem no WhatsApp).
+   ?teste=1 no endereço marca o pedido como TESTE (não conta no histórico do cliente). */
+const PEDIDOS_URL  = 'https://script.google.com/macros/s/AKfycbxwW2p-7sTU69UF3eB8Y-aeZO1F9_Ljb7n91wSfgdiaX-1lS9lwAgp8gUSczjO67hrn/exec';
+const MODO_TESTE   = new URLSearchParams(location.search).get('teste') === '1';
+const LIMITE_SALVAR_MS = 8000;
+let PAINEL_ATIVO = true;
+
+/* ════ APLICA CONFIG ════ */
+function aplicarConfig(C) {
+  WHATSAPP            = String(C.whatsapp);
+  LOJA_FECHADA        = C.lojaFechada;
+  APENAS_ACAI         = C.apenasAcai;
+  PROXIMO_DIA         = C.proximoDia;
+  HORA_PEDIDOS        = C.horaPedidos;
+  HORA_ENTREGAS       = C.horaEntregas;
+  MOSTRAR_PIX_NA_TELA = C.mostrarPixNaTela;
+  MENSAGEM_ATIVA      = (C.mensagens && C.mensagens[(C.mensagemAtiva || 1) - 1])
+                        || { icone:'😴', titulo:'VOLTAMOS EM BREVE', texto:'Estamos fechados agora. Volte mais tarde! 🍔' };
+  ESTOQUE             = C.estoque;
+  ESTOQUE_VARIANTE    = C.estoqueSabor;
+  ESTOQUE_CARNE       = C.estoqueCarne;
+  PIX_CHAVE           = C.pixChave;
+  PIX_NOME            = C.pixNome;
+  PIX_CIDADE          = C.pixCidade;
+  FRETE_URL           = C.freteUrl || '';
+  ACEITA_CARTAO       = !!C.aceitaCartao;
+  PAINEL_ATIVO        = C.painelAtivo !== false;
+
+  PRODUCTS = {
+    xcunhos: { id:'xcunhos', name:"X-Cunho's", emoji:'🍔', base:C.precos.xcunhos, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Carne Angus · Pão brioche · Queijo prato · Cheddar · Maionese · Ketchup',
+      remove:['Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    tradicional: { id:'tradicional', name:'Tradicional', emoji:'🍔', base:C.precos.tradicional, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Carne Angus · Pão brioche · Alface · Bacon picado · Tomate · Cebola · Queijo prato · Cheddar · Maionese · Ketchup',
+      remove:['Alface','Tomate','Cebola','Bacon picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    bacon: { id:'bacon', name:'Bacon Especial', emoji:'🥓', base:C.precos.bacon, up180:C.upgrade180,
+      duplo:false, type:'burger',
+      desc:'Carne Angus · Pão brioche · Bacon de paleta em fatias · Queijo prato · 3× Cheddar · Maionese',
+      remove:['Bacon de paleta em fatias','Queijo Prato','Cheddar','Maionese'] },
+    duplo: { id:'duplo', name:'Duplo', emoji:'🔥', base:C.precos.duplo, up180:C.upgrade180Duplo,
+      duplo:true, type:'burger',
+      desc:'2 carnes Angus · Pão brioche · Alface · Bacon picado · Tomate · Cebola · 2× Queijo prato · 2× Cheddar · Maionese · Ketchup',
+      remove:['Alface','Tomate','Cebola','Bacon picado','Queijo Prato','Cheddar','Maionese','Ketchup'] },
+    coca:   { id:'coca',   name:'Coca-Cola 350ml', emoji:'🥤', base:C.precos.coca,   type:'bebida', desc:'Lata · Normal ou Zero' },
+    sprite: { id:'sprite', name:'Sprite 350ml',    emoji:'🥤', base:C.precos.sprite, type:'bebida', desc:'Lata · Normal ou Zero' },
+    acai_p: { id:'acai_p', name:'Açaí P (240ml)', emoji:'🫐', base:C.precos.acai_p, completoAdd:C.acaiCompletoAdd,
+              type:'sobremesa', desc:'Açaí cremoso · 240ml', icon:ICONE_ACAI },
+    acai_g: { id:'acai_g', name:'Açaí G (480ml)', emoji:'🫐', base:C.precos.acai_g, completoAdd:C.acaiCompletoAdd,
+              type:'sobremesa', desc:'Açaí cremoso · 480ml', icon:ICONE_ACAI },
+  };
+
+  TOPPINGS = [
+    { id:'granola',   nome:'Granola',          preco:C.adicionais.granola,          emoji:'🫐' },
+    { id:'leiteCond', nome:'Leite condensado', preco:C.adicionais.leiteCondensado,  emoji:'🥛' },
+    { id:'leitePo',   nome:'Leite em pó',      preco:C.adicionais.leitePo,          emoji:'🥛' },
+  ];
+
+  ADICIONAIS = [
+    { id:'carne',   nome:'Carne extra',   preco120:C.adicionais.carne120, preco180:C.adicionais.carne180, emoji:'🥩' },
+    { id:'bacon_f', nome:'Bacon extra de paleta em fatias', preco:C.adicionais.baconFat, emoji:'🥓' },
+    { id:'bacon_p', nome:'Bacon extra picado',  preco:C.adicionais.baconPic, emoji:'🥓' },
+    { id:'prato',   nome:'Queijo prato',  preco:C.adicionais.prato, emoji:'🧀' },
+    { id:'cheddar', nome:'Cheddar',       preco:C.adicionais.cheddar, emoji:'🧀' },
+    { id:'alface',  nome:'Alface',        preco:C.adicionais.alface, emoji:'🥬' },
+    { id:'cebola',  nome:'Cebola',        preco:C.adicionais.cebola, emoji:'🧅' },
+    { id:'tomate',  nome:'Tomate',        preco:C.adicionais.tomate, emoji:'🍅' },
+  ];
+}
+
+/* ════ CARREGA CONFIG DA PLANILHA GOOGLE SHEETS ════ */
+async function carregarConfigPlanilha() {
+  // Devolve a configuração da planilha ou null. NÃO existe valor padrão no código:
+  // sem uma leitura completa e confiável (estado da loja + WhatsApp), nada é liberado.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const url = 'https://docs.google.com/spreadsheets/d/' + SHEETS_ID +
+                '/gviz/tq?tqx=out:json&sheet=config&headers=1';
+    const res  = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    // Remove o wrapper de callback do gviz
+    const json = JSON.parse(text.match(/setResponse\(([\s\S]*)\)/)[1]);
+    // Monta mapa chave → valor
+    const data = {};
+    (json.table.rows || []).forEach(row => {
+      if (row.c && row.c[0] && row.c[0].v !== null) {
+        const chave = String(row.c[0].v).trim();
+        const valor = (row.c[1] && row.c[1].v !== null && row.c[1].v !== undefined)
+          ? row.c[1].v : null;
+        data[chave] = valor;
+      }
+    });
+    const zap = String(data.whatsapp == null ? '' : data.whatsapp).replace(/\D/g, '');
+    const estado = String(data.lojaFechada == null ? '' : data.lojaFechada).trim();
+    if (!estado || zap.length < 12) throw new Error('configuração incompleta (lojaFechada/whatsapp)');
+    return parsearPlanilha(data);
+  } catch (e) {
+    console.warn('[Cunhos] Planilha indisponível ou incompleta — pedidos pausados:', e);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parsearPlanilha(d) {
+  const bool    = (v, def) => {
+    if (v === null || v === undefined || v === '') return def;
+    const s = String(v).trim().toLowerCase();
+    return s === 'true' || s === 'verdadeiro' || s === '1' || s === 'sim';
+  };
+  const nNull   = (v) => (v === null || v === '' || v === undefined) ? null : Number(v);
+  const nDef    = (v, def) => { const n = nNull(v); return n !== null ? n : def; };
+  const str     = (v, def) => (v !== null && v !== undefined) ? String(v) : def;
+  return {
+    lojaFechada:      bool(d.lojaFechada, false),
+    apenasAcai:       bool(d.apenasAcai, false),
+    proximoDia:       str(d.proximoDia, 'Amanhã'),
+    horaPedidos:      str(d.horaPedidos, '18h'),
+    horaEntregas:     str(d.horaEntregas, '19h'),
+    whatsapp:         String(d.whatsapp).replace(/\D/g, ''),
+    estoque: {
+      xcunhos:     nNull(d.estoque_xcunhos),
+      tradicional: nNull(d.estoque_tradicional),
+      bacon:       nNull(d.estoque_bacon),
+      duplo:       nNull(d.estoque_duplo),
+      coca:        nNull(d.estoque_coca),
+      sprite:      nNull(d.estoque_sprite),
+      acai_p:      nNull(d.estoque_acai_p),
+      acai_g:      nNull(d.estoque_acai_g),
+    },
+    estoqueSabor: {
+      coca_Normal:   nNull(d.sabor_coca_Normal),
+      coca_Zero:     nNull(d.sabor_coca_Zero),
+      sprite_Normal: nNull(d.sabor_sprite_Normal),
+      sprite_Zero:   nNull(d.sabor_sprite_Zero),
+    },
+    estoqueCarne: {
+      c120: nNull(d.carne_120),
+      c180: nNull(d.carne_180),
+    },
+    precos: {
+      xcunhos:     nDef(d.preco_xcunhos, 36.90),
+      tradicional: nDef(d.preco_tradicional, 43.90),
+      bacon:       nDef(d.preco_bacon, 50.90),
+      duplo:       nDef(d.preco_duplo, 57.90),
+      coca:        nDef(d.preco_coca, 8.90),
+      sprite:      nDef(d.preco_sprite, 8.50),
+      acai_p:      nDef(d.preco_acai_p, 13.90),
+      acai_g:      nDef(d.preco_acai_g, 26.90),
+    },
+    upgrade180:      nDef(d.upgrade180, 6.00),
+    upgrade180Duplo: nDef(d.upgrade180Duplo, 12.00),
+    acaiCompletoAdd: nDef(d.acaiCompletoAdd, 4.00),
+    adicionais: {
+      carne120: nDef(d.adicional_carne120, 11.00),
+      carne180: nDef(d.adicional_carne180, 15.00),
+      baconFat: nDef(d.adicional_baconFat, 5.00),
+      baconPic: nDef(d.adicional_baconPic, 3.00),
+      prato:    nDef(d.adicional_prato, 3.00),
+      cheddar:  nDef(d.adicional_cheddar, 2.00),
+      alface:   nDef(d.adicional_alface, 2.00),
+      cebola:   nDef(d.adicional_cebola, 2.00),
+      tomate:   nDef(d.adicional_tomate, 1.50),
+      granola:          nDef(d.adicional_granola, 2.00),
+      leiteCondensado:  nDef(d.adicional_leiteCondensado, 2.00),
+      leitePo:          nDef(d.adicional_leitePo, 2.00),
+    },
+    mostrarPixNaTela: bool(d.mostrarPixNaTela, false),
+    painelAtivo: bool(d.painelAtivo, true),   // chave opcional na planilha: FALSE desliga o envio ao painel (o pedido segue só pelo WhatsApp)
+    pixChave:  str(d.pixChave, '126bc16c-7ecd-4018-8c09-d19895b1fd1a'),
+    pixNome:   str(d.pixNome, 'LEONARDO P GIUSTI'),
+    pixCidade: str(d.pixCidade, 'INDAIATUBA'),
+    freteUrl:     str(d.freteUrl, '').trim(),
+    aceitaCartao: bool(d.aceitaCartao, false),
+    mensagemAtiva: Math.max(1, Math.min(4, parseInt(d.mensagemAtiva) || 1)),
+    mensagens: [
+      {
+        icone:  str(d.msg1_icone,  '😴'),
+        titulo: str(d.msg1_titulo, 'O CHURRASQUEIRO TIROU O DIA'),
+        texto:  str(d.msg1_texto,  'Hoje a gente deu uma pausa, mas na {dia} a brasa esquenta de novo e você vai ser muito bem servido! Salva o link e não esquece de nós. 🍔'),
+      },
+      {
+        icone:  str(d.msg2_icone,  '🔥'),
+        titulo: str(d.msg2_titulo, 'AMANHÃ A BRASA ESQUENTA'),
+        texto:  str(d.msg2_texto,  'Amanhã voltamos! Pedidos a partir das 17h e entregas a partir das 19h. Quer garantir o seu no horário certinho? Peça com antecedência. Te esperamos! 🍔'),
+      },
+      {
+        icone:  str(d.msg3_icone,  '🍔'),
+        titulo: str(d.msg3_titulo, 'HOJE TEM HAMBÚRGUER!'),
+        texto:  str(d.msg3_texto,  'Ainda não estamos recebendo pedidos, mas já estamos de olho! A partir das 17h você já pode pedir, e as entregas começam às 19h. Quanto mais cedo você pedir, mais certinho chega. Te esperamos! 🔥'),
+      },
+      {
+        icone:  str(d.msg4_icone,  '✅'),
+        titulo: str(d.msg4_titulo, 'POR HOJE FINALIZAMOS'),
+        texto:  str(d.msg4_texto,  'Por hoje conseguimos servir nossos clientes com muito carinho e capricho. Voltamos na {dia} com pedidos a partir das 17h e entregas a partir das 19h. Até a próxima! 🍔'),
+      },
+    ],
+  };
+}
+
+/* ════ ESTADO ════ */
+let order = [], uid = 1, draft = null;
+
+const fmt = v => 'R$' + v.toFixed(2).replace('.',',');
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const precoAdd = (a,size) => a.id==='carne' ? (size===180 ? a.preco180 : a.preco120) : a.preco;
+
+/* ════ ESTOQUE ════ */
+const qtdNoCarrinho = pid => order.filter(i => i.p.id === pid).length;
+const esgotado = pid => { const q = ESTOQUE[pid]; return q !== null && q !== undefined && q <= 0; };
+function podeAdicionar(pid){
+  const lim = ESTOQUE[pid];
+  if (lim === null || lim === undefined) return true;
+  return qtdNoCarrinho(pid) < lim;
+}
+function varianteEsgotada(pid, variante){
+  const chave = pid + '_' + variante;
+  const q = ESTOQUE_VARIANTE[chave];
+  return q !== null && q !== undefined && q <= 0;
+}
+/* Estoque por TAMANHO da carne (120g / 180g) — vale para todos os hambúrgueres */
+const TAMANHOS = [120, 180];
+function tamanhoEsgotado(size){
+  const q = ESTOQUE_CARNE[size === 180 ? 'c180' : 'c120'];
+  return q !== null && q !== undefined && q <= 0;
+}
+function tamanhosDisponiveis(){ return TAMANHOS.filter(s => !tamanhoEsgotado(s)); }
+const carneTodaEsgotada = () => tamanhosDisponiveis().length === 0;
+/* ════ FOTOS DOS CARDS ═══════════════════════════════════════════════
+   'src' vazio = placeholder "Foto em breve". Só preencha com a foto APROVADA.
+   'gramatura' (120 | 180) diz qual versão a foto representa melhor; só preencher
+   depois da aprovação foto a foto. Com valor, o card mostra a etiqueta
+   "Foto ilustrativa · X g" (no Duplo, X é a soma das duas carnes).
+   Bebidas: uma foto por variante em 'variantes' ({ Normal:'…', Zero:'…' }); o card troca a foto
+   quando o cliente escolhe Normal/Zero.
+   ═══════════════════════════════════════════════════════════════════ */
+const FOTOS = {
+  xcunhos:     { src:'x-cunhos.webp', gramatura:null },
+  tradicional: { src:'tradicional.webp', gramatura:null },
+  bacon:       { src:'bacon-especial.webp', gramatura:null },
+  duplo:       { src:'duplo.webp', gramatura:null },
+  coca:        { src:'', gramatura:null, variantes:{ Normal:'coca-original-350ml.webp', Zero:'coca-zero-350ml.webp' } },
+  sprite:      { src:'', gramatura:null, variantes:{ Normal:'sprite-original-350ml.webp', Zero:'sprite-zero-350ml.webp' } },
+  // Açaí: uma foto por versão (Puro / Completo). Mostradas INTEIRAS e na mesma escala ('fit'), para o
+  // 480 ml parecer maior que o 240 ml e não a mesma foto aproximada.
+  acai_p:      { src:'', gramatura:null, variantes:{ Puro:'acai-p-puro-240ml.webp', Completo:'acai-p-completo-240ml.webp' } },
+  acai_g:      { src:'', gramatura:null, variantes:{ Puro:'acai-g-puro-480ml.webp', Completo:'acai-g-completo-480ml.webp' } },
+};
+
+/* Gramaturas: o Duplo mostra a soma das duas carnes (240 g = 2×120 g | 360 g = 2×180 g).
+   Os preços continuam vindo da planilha: 120 g = base; 180 g = base + acréscimo (upgrade180 / upgrade180Duplo). */
+const gramTotal = (p,g) => p.duplo ? g*2 : g;
+const gramTxt   = (p,g) => gramTotal(p,g) + ' g';
+const gramSub   = (p,g) => p.duplo ? '2 carnes de ' + g + ' g' : '';
+const precoTam  = (p,g) => g === 180 ? p.base + p.up180 : p.base;
+const fmtUi     = v => fmt(v).replace('R$', 'R$ ');
+/* ⚠️ REGRA PROVISÓRIA DA INTERFACE (não vem da planilha): máximo de 20 unidades por item, só para
+   evitar erro de seleção. NÃO substitui nem altera o estoque da planilha ("limite por cliente"),
+   que continua valendo por cima. Revisar/ajustar este número quando houver definição comercial. */
+const MAX_QTD   = 20;
+let CONFIG_EM   = 0;      // quando a configuração foi lida da planilha
+let montOpener  = null;
+
+const fotoExtra = p => p.type === 'bebida' ? 'can' : (p.type === 'sobremesa' ? 'fit' : '');
+const fotoVar   = (p, d) => p.type === 'bebida' ? d.variant : (p.type === 'sobremesa' ? (d.completo ? 'Completo' : 'Puro') : null);
+function fotoHtml(p, extra, variante, eager){
+  const fo = FOTOS[p.id] || {};
+  const f = { src: (fo.variantes && variante && fo.variantes[variante]) || fo.src || '', gramatura: fo.gramatura };
+  const tag = (f.src && f.gramatura) ? '<span class="foto-tag">Foto ilustrativa · ' + gramTxt(p, f.gramatura) + '</span>' : '';
+  const ph = '<div class="pimg-ph">'
+    + (p.icon ? p.icon.replace('width="26" height="26"', 'width="52" height="52"') : '<span class="ph-i">' + p.emoji + '</span>')
+    + '<span>Foto em breve</span></div>';
+  // Latas ('can'): foto vertical mostrada INTEIRA e centralizada no quadrado, com a própria foto
+  // desfocada preenchendo as laterais.
+  const fundo = (f.src && /\b(can|fit)\b/.test(extra || '')) ? '<div class="pimg-bg" style="background-image:url(\'' + esc(f.src) + '\')"></div>' : '';
+  const img = f.src
+    ? '<img src="' + esc(f.src) + '" alt="' + esc(p.name) + '" loading="' + (eager ? 'eager' : 'lazy') + '" decoding="async"'
+      + ' '
+      + 'onerror="var t=this.parentNode.querySelector(\'.foto-tag,.pimg-bg\');if(t)t.remove();this.remove()">'
+    : '';
+  return '<div class="pimg ' + (extra || '') + '">' + ph + fundo + img + tag + '</div>';
+}
+
+/* ════ ESTOQUE (cards) ════
+   Os cards NÃO avisam esgotamento por gramatura (as chaves carne_120/carne_180 ainda não foram
+   confirmadas como controle confiável). Esgotado de PRODUTO inteiro continua sinalizado. */
+function bloqueado(pid){
+  const p = PRODUCTS[pid];
+  let b = !podeAdicionar(pid);
+  if (p.type === 'bebida') b = b || VARIANTES.every(v => varianteEsgotada(pid, v));
+  if (p.type === 'burger') b = b || carneTodaEsgotada();
+  return b;
+}
+function aplicarEstoque(){
+  Object.keys(PRODUCTS).forEach(pid => {
+    const card = document.querySelector('.pcard[data-pid="'+pid+'"]');
+    if (!card) return;
+    const bloq = bloqueado(pid);
+    card.classList.toggle('sold-out', bloq);
+    const btn = card.querySelector('.pcta');
+    if (btn){ btn.disabled = bloq; btn.textContent = bloq ? 'Indisponível' : ctaTxt(PRODUCTS[pid]); }
+    const nameEl = card.querySelector('.pname');
+    let tag = nameEl ? nameEl.querySelector('.tag-esg') : null;
+    if (bloq){
+      if (!tag && nameEl){
+        tag = document.createElement('span');
+        tag.className = 'tag-esg';
+        tag.textContent = 'ESGOTADO';
+        nameEl.appendChild(tag);
+      }
+    } else if (tag) { tag.remove(); }
+  });
+}
+
+/* ════ CARDS ════ */
+const CARD_SIZE = {}, CARD_VAR = {};
+const tamanhoCard  = pid => CARD_SIZE[pid] || tamanhosDisponiveis()[0] || 120;
+const varianteCard = pid => {
+  const v = CARD_VAR[pid];
+  return (v && !varianteEsgotada(pid, v)) ? v : (VARIANTES.find(x => !varianteEsgotada(pid, x)) || VARIANTES[0]);
+};
+function ctaTxt(p){
+  if (p.type === 'burger')  return 'Personalizar · ' + fmtUi(precoTam(p, tamanhoCard(p.id)));
+  if (p.type === 'bebida')  return 'Adicionar à sacola';
+  return 'Personalizar';
+}
+function cardHtml(p){
+  let corpo = '';
+  if (p.type === 'burger'){
+    const sel = tamanhoCard(p.id);
+    corpo += '<div class="psizes" role="radiogroup" aria-label="Gramatura de ' + esc(p.name) + '">'
+      + TAMANHOS.map(g =>
+          '<button type="button" class="psz" role="radio" data-g="' + g + '" aria-checked="' + (sel === g) + '" '
+          + 'onclick="escolherTamanhoCard(\'' + p.id + '\',' + g + ')">'
+          + '<span class="psz-g">' + gramTxt(p,g) + '</span>'
+          + (p.duplo ? '<span class="psz-s">' + gramSub(p,g) + '</span>' : '')
+          + '<span class="psz-p">' + fmtUi(precoTam(p,g)) + '</span></button>').join('')
+      + '</div>';
+    if (p.duplo) corpo += '<div class="psz-note">240 g = 2 carnes de 120 g · 360 g = 2 carnes de 180 g</div>';
+  } else if (p.type === 'bebida'){
+    const sel = varianteCard(p.id);
+    corpo += '<div class="pprice">' + fmtUi(p.base) + '</div>'
+      + '<div class="psizes" role="radiogroup" aria-label="Tipo de ' + esc(p.name) + '">'
+      + VARIANTES.map(v => {
+          const esg = varianteEsgotada(p.id, v);
+          return '<button type="button" class="psz" role="radio" data-v="' + v + '" aria-checked="' + (sel === v) + '"'
+            + (esg ? ' disabled' : '') + ' onclick="escolherVarianteCard(\'' + p.id + '\',\'' + v + '\')">'
+            + '<span class="psz-g">' + v + '</span>' + (esg ? '<span class="psz-s">Esgotado</span>' : '') + '</button>';
+        }).join('')
+      + '</div>';
+  } else {
+    corpo += '<div class="pprice">' + fmtUi(p.base) + '</div>'
+      + '<div class="psz-note">Versão completa: +' + fmtUi(p.completoAdd) + ' (granola + mais 1 opção à sua escolha)</div>';
+  }
+  const clique = p.type === 'bebida' ? "adicionarBebida('" + p.id + "')" : "abrirMontCard('" + p.id + "')";
+  return '<article class="pcard" data-pid="' + p.id + '">'
+    + fotoHtml(p, fotoExtra(p), p.type === 'bebida' ? varianteCard(p.id) : (p.type === 'sobremesa' ? 'Puro' : null))
+    + '<div class="pbody"><h3 class="pname">' + p.name + '</h3><p class="pdesc">' + p.desc + '</p>'
+    + corpo
+    + '<button type="button" class="pcta" onclick="' + clique + '">' + ctaTxt(p) + '</button>'
+    + '</div></article>';
+}
+function desenharCards(){
+  const all = Object.values(PRODUCTS);
+  document.getElementById('cards-burger').innerHTML = all.filter(p=>p.type==='burger').map(cardHtml).join('');
+  document.getElementById('cards-bebida').innerHTML = all.filter(p=>p.type==='bebida').map(cardHtml).join('');
+  document.getElementById('cards-acai').innerHTML   = all.filter(p=>p.type==='sobremesa').map(cardHtml).join('');
+}
+function escolherTamanhoCard(pid, g){
+  CARD_SIZE[pid] = g;
+  document.querySelectorAll('.pcard[data-pid="'+pid+'"] .psz[data-g]').forEach(b =>
+    b.setAttribute('aria-checked', String(Number(b.dataset.g) === g)));
+  aplicarEstoque();
+}
+function escolherVarianteCard(pid, v){
+  CARD_VAR[pid] = v;
+  document.querySelectorAll('.pcard[data-pid="'+pid+'"] .psz[data-v]').forEach(b =>
+    b.setAttribute('aria-checked', String(b.dataset.v === v)));
+  const img = document.querySelector('.pcard[data-pid="'+pid+'"] .pimg');
+  if (img) img.outerHTML = fotoHtml(PRODUCTS[pid], 'can', v);
+}
+function abrirMontCard(pid){
+  const s = tamanhoCard(pid);
+  // Sem seletor na personalização, o tamanho esgotado é avisado AQUI (não troca de gramatura escondido).
+  if (PRODUCTS[pid].type === 'burger' && tamanhoEsgotado(s)) { aviso('😔<br>Esse tamanho<br>esgotou por hoje'); return; }
+  abrirMont(pid, s);
+}
+
+/* ════ AVISO CURTO ════ */
+let snackTimer = null;
+function snack(msg, rotulo, fn){
+  const s = document.getElementById('snack'), b = document.getElementById('snack-btn');
+  document.getElementById('snack-txt').textContent = msg;
+  if (rotulo){ b.textContent = rotulo; b.style.display = ''; b.onclick = () => { s.classList.remove('show'); fn(); }; }
+  else { b.style.display = 'none'; b.onclick = null; }
+  s.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(() => s.classList.remove('show'), rotulo ? 6000 : 3000);
+}
+
+/* ════ PERSONALIZAÇÃO ════ */
+function totalDe(d){
+  const p = d.p;
+  if (p.type === 'sobremesa'){
+    let t = p.base;
+    if (d.completo) t += (p.completoAdd || 0);
+    (d.toppings||[]).forEach(id => {
+      const tp = TOPPINGS.find(x => x.id === id);
+      if (tp) t += tp.preco;
+    });
+    return t;
+  }
+  if (p.type !== 'burger') return p.base;
+  let t = p.base;
+  if (d.size === 180) t += p.up180;
+  d.add.forEach(id => {
+    const a = ADICIONAIS.find(x => x.id === id);
+    if (a) t += precoAdd(a, d.size);
+  });
+  return t;
+}
+const totalDraft = () => draft ? totalDe(draft) : 0;
+const somaCent = (arr) => arr.reduce((s, v) => s + Math.round(v * 100), 0) / 100;
+
+function liberadoParaAbrir(pid){
+  const p = PRODUCTS[pid];
+  if (LOJA_FECHADA && APENAS_ACAI && p.type !== 'sobremesa') { aviso('😴<br>Só o açaí<br>está disponível agora'); return false; }
+  if (esgotado(pid))       { aviso('😔<br>Esgotado<br>por hoje'); return false; }
+  if (!podeAdicionar(pid)) { aviso('😔<br>Quantidade<br>indisponível'); return false; }
+  if (p.type === 'bebida' && VARIANTES.every(v => varianteEsgotada(pid, v))) { aviso('😔<br>Esgotado<br>por hoje'); return false; }
+  if (p.type === 'burger' && carneTodaEsgotada()) { aviso('😔<br>Esgotado<br>por hoje'); return false; }
+  return true;
+}
+function novoDraft(pid, size){
+  const p = PRODUCTS[pid];
+  const variante = p.type === 'bebida' ? (VARIANTES.find(v => !varianteEsgotada(pid, v)) || VARIANTES[0]) : 'Normal';
+  let tam = 120;
+  if (p.type === 'burger') tam = (size && !tamanhoEsgotado(size)) ? size : (tamanhosDisponiveis()[0] || 120);
+  return { p, size:tam, ponto:'Ao ponto', variant:variante, add:[], rem:[], obs:'', completo:false,
+           toppings:[], leite:null, qtd:1, editUids:null };
+}
+function itemDe(d){
+  return { uid:uid++, p:d.p, size:d.size, ponto:d.ponto, variant:d.variant,
+           add:[...d.add], rem:[...d.rem], obs:d.obs,
+           completo: !!d.completo, toppings:[...(d.toppings||[])],
+           leite: d.completo ? d.leite : null,
+           preco:totalDe(d) };
+}
+function empurrar(d, n){ for (let i = 0; i < n; i++) order.push(itemDe(d)); }
+/* Estoque da planilha ("limite por cliente"): conta unidades na sacola. */
+function maxQtd(pid, jaNaSacola){
+  const lim = ESTOQUE[pid];
+  if (lim === null || lim === undefined) return MAX_QTD;
+  return Math.max(0, Math.min(MAX_QTD, lim - jaNaSacola));
+}
+
+function abrirMont(pid, size, uids){
+  if (!uids && !liberadoParaAbrir(pid)) return;
+  draft = novoDraft(pid, size);
+  if (uids){
+    const it = order.find(i => i.uid === uids[0]);
+    if (!it){ draft = null; return; }
+    Object.assign(draft, { size:it.size, ponto:it.ponto, variant:it.variant, add:[...it.add], rem:[...it.rem],
+                           obs:it.obs, completo:!!it.completo, toppings:[...(it.toppings||[])], leite:it.leite,
+                           editUids:uids.slice() });
+  }
+  const p = draft.p;
+  montOpener = document.activeElement;
+  document.getElementById('mont-title').textContent = p.name;
+  document.getElementById('mont-mode').textContent = uids
+    ? ('Editando' + (uids.length > 1 ? ' · ' + uids.length + ' unidades' : ''))
+    : 'Personalizar';
+  document.getElementById('mont-hero').innerHTML = fotoHtml(p, fotoExtra(p), fotoVar(p, draft), true);
+  const etiquetaGram = (p.type === 'burger' && !uids)
+    ? '<div class="mont-size">🥩 ' + gramTxt(p, draft.size) + (p.duplo ? ' · ' + gramSub(p, draft.size) : '') + '</div>' : '';
+  document.getElementById('mont-info').innerHTML = etiquetaGram + (p.type === 'burger' ? '<b>Ingredientes originais</b>' : '') + p.desc;
+  document.getElementById('mont').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('mont-body').scrollTop = 0;
+  desenharMont();
+  document.querySelector('#mont .mont-x').focus({ preventScroll:true });
+}
+function fecharMont(){
+  document.getElementById('mont').classList.remove('show');
+  draft = null;
+  document.body.style.overflow = '';
+  if (montOpener && document.body.contains(montOpener)) montOpener.focus({ preventScroll:true });
+  montOpener = null;
+}
+function setSize(s){
+  if (tamanhoEsgotado(s)) { aviso('😔<br>Esse tamanho<br>esgotou por hoje'); return; }
+  draft.size = s; desenharMont();
+}
+function setPonto(p){ draft.ponto = p; desenharMont(); }
+function setVariant(v){
+  if (varianteEsgotada(draft.p.id, v)) { aviso('😔<br>Esse sabor<br>esgotou'); return; }
+  draft.variant = v;
+  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'can', v, true);
+  desenharMont();
+}
+function togAdd(id){ const i = draft.add.indexOf(id); i>=0 ? draft.add.splice(i,1) : draft.add.push(id); desenharMont(); }
+function togRem(x){ const i = draft.rem.indexOf(x);  i>=0 ? draft.rem.splice(i,1)  : draft.rem.push(x);  desenharMont(); }
+function setObs(v){ draft.obs = v; }
+function toggleCompleto(v){
+  draft.completo = v;
+  if (v && !draft.leite) draft.leite = 'leiteCond';
+  document.getElementById('mont-hero').innerHTML = fotoHtml(draft.p, 'fit', fotoVar(draft.p, draft), true);
+  desenharMont();
+}
+function setLeite(id){ draft.leite = id; desenharMont(); }
+function togTopping(id){ draft.toppings = draft.toppings||[]; const i = draft.toppings.indexOf(id); i>=0 ? draft.toppings.splice(i,1) : draft.toppings.push(id); desenharMont(); }
+function qtdMont(delta){
+  if (!draft || draft.editUids) return;
+  const max = maxQtd(draft.p.id, qtdNoCarrinho(draft.p.id));
+  const nova = draft.qtd + delta;
+  if (nova > max) { snack(max >= MAX_QTD ? 'Limite de ' + MAX_QTD + ' unidades por item' : 'Quantidade indisponível no estoque'); return; }
+  draft.qtd = Math.max(1, nova);
+  atualizarFootMont();
+}
+
+const blk = (rotulo, inner) => '<div class="blk"><div class="blk-label">' + rotulo + '</div>' + inner + '</div>';
+function obsBlk(){
+  return '<div class="blk"><label class="blk-label" for="mont-obs">📝 Observação</label>'
+    + '<textarea id="mont-obs" class="obs" placeholder="Alguma observação?" oninput="setObs(this.value)">' + esc(draft.obs) + '</textarea></div>';
+}
+function desenharMont(){
+  const p = draft.p;
+  const el = document.getElementById('mont-opts');
+  const foco = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null;
+  let h = '';
+  if (p.type === 'bebida'){
+    h += blk('🥤 Escolha o tipo', '<div class="sizes" role="radiogroup">'
+      + VARIANTES.map(v => {
+          const esg = varianteEsgotada(p.id, v), on = draft.variant === v;
+          return '<button type="button" data-k="v'+v+'" class="sz'+(esg?' sz-off':'')+(on?' on':'')+'" role="radio" aria-checked="'+on+'" onclick="setVariant(\''+v+'\')">'
+            + '<span class="sz-g">'+v+'</span><span class="sz-p">'+(esg ? 'ESGOTADO' : fmtUi(p.base))+'</span></button>';
+        }).join('')
+      + '</div>');
+    h += obsBlk();
+  } else if (p.type === 'sobremesa'){
+    h += blk('🫐 Puro ou completo?', '<div class="sizes" role="radiogroup">'
+      + '<button type="button" data-k="cp" class="sz'+(!draft.completo?' on':'')+'" role="radio" aria-checked="'+(!draft.completo)+'" onclick="toggleCompleto(false)">'
+      +   '<span class="sz-g">Puro</span><span class="sz-p">'+fmtUi(p.base)+'</span></button>'
+      + '<button type="button" data-k="cc" class="sz'+(draft.completo?' on':'')+'" role="radio" aria-checked="'+draft.completo+'" onclick="toggleCompleto(true)">'
+      +   '<span class="sz-g">Completo</span><span class="sz-p">+'+fmtUi(p.completoAdd)+'</span></button>'
+      + '</div>');
+    if (draft.completo){
+      h += blk('🥛 Completo vem com granola + escolha o leite', '<div class="sizes" role="radiogroup">'
+        + TOPPINGS.filter(t => t.id==='leiteCond' || t.id==='leitePo').map(op => {
+            const on = draft.leite === op.id;
+            return '<button type="button" data-k="l'+op.id+'" class="sz'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" onclick="setLeite(\''+op.id+'\')">'
+              + '<span class="sz-g" style="font-size:21px">'+op.nome+'</span><span class="sz-p">Incluso</span></button>';
+          }).join('')
+        + '</div>');
+    }
+    h += blk('➕ Quer mais? (avulso, à parte)', '<div class="opts">'
+      + TOPPINGS.map(tp => {
+          const on = (draft.toppings||[]).includes(tp.id);
+          return '<button type="button" data-k="t'+tp.id+'" class="opt'+(on?' on-add':'')+'" role="checkbox" aria-checked="'+on+'" onclick="togTopping(\''+tp.id+'\')">'
+            + '<span class="cb"><span class="ck">✓</span></span>'
+            + '<span class="otxt">'+tp.emoji+' '+tp.nome+'</span>'
+            + '<span class="oplus">+'+fmtUi(tp.preco)+'</span></button>';
+        }).join('')
+      + '</div>');
+    h += obsBlk();
+  } else {
+    const esg120 = tamanhoEsgotado(120), esg180 = tamanhoEsgotado(180);
+    const tamBtn = (g, esg) => {
+      const on = draft.size === g;
+      const diff = (g === 180 && !esg && !esg120) ? '<span class="sz-d">+' + fmtUi(p.up180) + ' sobre ' + gramTxt(p,120) + '</span>' : '';
+      return '<button type="button" data-k="s'+g+'" class="sz'+(esg?' sz-off':'')+(on?' on':'')+'" role="radio" aria-checked="'+on+'" onclick="setSize('+g+')">'
+        + '<span class="sz-g">'+gramTxt(p,g)+'</span>'
+        + (p.duplo ? '<span class="sz-s">'+gramSub(p,g)+'</span>' : '')
+        + '<span class="sz-p">'+(esg ? 'ESGOTADO' : fmtUi(precoTam(p,g)))+'</span>' + diff + '</button>';
+    };
+    // A gramatura já foi escolhida no card (fica fixa e aparece como etiqueta no topo). O seletor só existe
+    // ao EDITAR um item da sacola, onde não há card para voltar.
+    if (draft.editUids) {
+      h += blk('🥩 Gramatura', '<div class="sizes" role="radiogroup">' + tamBtn(120, esg120) + tamBtn(180, esg180) + '</div>'
+        + (p.duplo ? '<div class="psz-note" style="margin-top:8px">240 g = 2 carnes de 120 g · 360 g = 2 carnes de 180 g</div>' : ''));
+    }
+    h += blk('🔥 Ponto da carne', '<div class="pgrid">'
+      + PONTOS.map((x,i) => '<button type="button" data-k="p'+i+'" class="pbtn'+(draft.ponto===x?' on':'')+'" aria-pressed="'+(draft.ponto===x)+'" onclick="setPonto(\''+x+'\')">'+x+'</button>').join('')
+      + '</div>');
+    h += blk('➕ Adicionais (extras)', '<div class="psz-note" style="margin:-3px 0 9px">Cobrados à parte, além dos ingredientes que já vêm no lanche.</div><div class="opts">'
+      + ADICIONAIS.map(a => {
+          const on = draft.add.includes(a.id);
+          const nome = a.id==='carne' ? (a.nome+' '+draft.size+'g') : a.nome;
+          return '<button type="button" data-k="a'+a.id+'" class="opt'+(on?' on-add':'')+'" role="checkbox" aria-checked="'+on+'" onclick="togAdd(\''+a.id+'\')">'
+            + '<span class="cb"><span class="ck">✓</span></span>'
+            + '<span class="otxt">'+a.emoji+' '+nome+'</span>'
+            + '<span class="oplus">+'+fmtUi(precoAdd(a,draft.size))+'</span></button>';
+        }).join('')
+      + '</div>');
+    h += blk('❌ Retirar do lanche', '<div class="opts">'
+      + p.remove.map((ing,i) => {
+          const on = draft.rem.includes(ing);
+          return '<button type="button" data-k="r'+i+'" class="opt'+(on?' on-rem':'')+'" role="checkbox" aria-checked="'+on+'" onclick="togRem(\''+ing+'\')">'
+            + '<span class="cb"><span class="ck">✓</span></span>'
+            + '<span class="otxt">Sem '+ing+'</span></button>';
+        }).join('')
+      + '</div>');
+    h += obsBlk();
+  }
+  el.innerHTML = h;
+  if (foco){ const n = el.querySelector('[data-k="'+foco+'"]'); if (n) n.focus({ preventScroll:true }); }
+  atualizarFootMont();
+}
+function atualizarFootMont(){
+  const edit = !!draft.editUids;
+  const un = edit ? draft.editUids.length : draft.qtd;
+  document.getElementById('mont-qty').style.display = edit ? 'none' : 'inline-flex';
+  document.getElementById('mont-qtd').textContent = draft.qtd;
+  document.getElementById('mont-menos').disabled = draft.qtd <= 1;
+  document.getElementById('mont-mais').disabled = draft.qtd >= maxQtd(draft.p.id, qtdNoCarrinho(draft.p.id));
+  document.getElementById('mont-confirm-txt').textContent = edit ? 'Salvar alterações' : 'Adicionar à sacola';
+  document.getElementById('mont-preco').textContent = fmtUi(Math.round(totalDe(draft) * 100) * un / 100);
+}
+function salvarMont(){
+  if (!draft) return;
+  const d = draft;
+  if (d.editUids){
+    const preco = totalDe(d);
+    d.editUids.forEach(id => {
+      const it = order.find(i => i.uid === id);
+      if (!it) return;
+      Object.assign(it, { size:d.size, ponto:d.ponto, variant:d.variant, add:[...d.add], rem:[...d.rem],
+                          obs:d.obs, completo:!!d.completo, toppings:[...(d.toppings||[])],
+                          leite: d.completo ? d.leite : null, preco });
+    });
+    fecharMont(); render();
+    snack('✅ Item atualizado na sacola');
+    return;
+  }
+  const n = d.qtd;
+  const lim = ESTOQUE[d.p.id];
+  if (lim !== null && lim !== undefined && qtdNoCarrinho(d.p.id) + n > lim) {
+    aviso('😔<br>Quantidade<br>indisponível'); return;
+  }
+  empurrar(d, n);
+  fecharMont(); render();
+  snack('✅ ' + (n > 1 ? n + '× ' : '') + d.p.name + ' adicionado à sacola', 'Ver sacola', irSacola);
+}
+function adicionarBebida(pid){
+  if (!liberadoParaAbrir(pid)) return;
+  const d = novoDraft(pid, 120);
+  d.variant = varianteCard(pid);
+  empurrar(d, 1);
+  render();
+  snack('✅ ' + d.p.name + ' (' + d.variant + ') adicionada', 'Ver sacola', irSacola);
+}
+
+/* ════ SACOLA ════
+   order[] guarda UMA entrada por unidade (como sempre). A sacola agrupa só na tela as unidades
+   idênticas, e o texto do WhatsApp continua com um bloco por unidade. */
+const chaveItem = it => JSON.stringify([it.p.id, it.size, it.ponto, it.variant, [...it.add].sort(), [...it.rem].sort(),
+  (it.obs||'').trim(), !!it.completo, [...(it.toppings||[])].sort(), it.leite || null]);
+function grupos(){
+  const m = new Map();
+  order.forEach(it => { const k = chaveItem(it); if (!m.has(k)) m.set(k, []); m.get(k).push(it); });
+  return [...m.values()];
+}
+const grupoDe = uid0 => {
+  const it = order.find(i => i.uid === uid0);
+  if (!it) return [];
+  const k = chaveItem(it);
+  return order.filter(i => chaveItem(i) === k);
+};
+function maisGrupo(u){
+  const g = grupoDe(u);
+  if (!g.length) return;
+  const src = g[g.length - 1];
+  if (g.length >= MAX_QTD) { snack('Limite de ' + MAX_QTD + ' unidades por item'); return; }
+  if (!podeAdicionar(src.p.id)) { aviso('😔<br>Quantidade<br>indisponível'); return; }
+  order.push(Object.assign({}, src, { uid:uid++, add:[...src.add], rem:[...src.rem], toppings:[...(src.toppings||[])] }));
+  render();
+}
+function menosGrupo(u){
+  const g = grupoDe(u);
+  if (g.length < 2) return;
+  const ultimo = g[g.length - 1];
+  order = order.filter(i => i.uid !== ultimo.uid);
+  render();
+}
+function removerGrupo(u){
+  const g = grupoDe(u);
+  if (!g.length) return;
+  const ids = new Set(g.map(x => x.uid));
+  const pos = order.findIndex(i => ids.has(i.uid));
+  order = order.filter(i => !ids.has(i.uid));
+  render();
+  snack('Item removido da sacola', 'Desfazer', () => {
+    order.splice(Math.min(pos, order.length), 0, ...g);
+    render();
+  });
+}
+function editarGrupo(u){
+  const g = grupoDe(u);
+  if (!g.length) return;
+  if (g.length > 1) { abrirDlgEdit(g); return; }
+  abrirMont(g[0].p.id, null, [g[0].uid]);
+}
+function abrirDlgEdit(g){
+  const all = document.getElementById('dlg-edit-all'), one = document.getElementById('dlg-edit-one');
+  document.getElementById('dlg-edit-txt').textContent =
+    'Você tem ' + g.length + ' unidades iguais de ' + g[0].p.name + '. O que deseja editar?';
+  all.textContent = 'Todas as ' + g.length + ' unidades';
+  all.onclick = () => { fecharDlgEdit(); abrirMont(g[0].p.id, null, g.map(x => x.uid)); };
+  one.onclick = () => { fecharDlgEdit(); abrirMont(g[0].p.id, null, [g[g.length - 1].uid]); };
+  document.getElementById('dlg-edit').classList.add('show');
+  all.focus();
+}
+function fecharDlgEdit(){ document.getElementById('dlg-edit').classList.remove('show'); }
+
+const totalPedido = () => somaCent(order.map(i => i.preco));
+function itemTags(it){
+  const t = it.p.type;
+  let tags = '';
+  if (t === 'burger'){
+    const lbl = gramTxt(it.p, it.size) + (it.p.duplo ? ' · 2× ' + it.size + ' g' : '');
+    tags += '<span class="tag '+(it.size===180?'tup':'tg')+'">'+lbl+'</span>';
+    tags += '<span class="tag tg">'+it.ponto+'</span>';
+    tags += it.add.map(id => {
+      const a = ADICIONAIS.find(x => x.id === id);
+      const n = a.id==='carne' ? (a.nome+' '+it.size+'g') : a.nome;
+      return '<span class="tag tup">+'+n+'</span>';
+    }).join('');
+    tags += it.rem.map(r => '<span class="tag trm">Sem '+r+'</span>').join('');
+  } else if (t === 'bebida'){
+    tags += '<span class="tag tg">'+it.variant+'</span>';
+  } else if (t === 'sobremesa'){
+    const leiteNome = it.leite==='leiteCond' ? 'Leite Condensado' : (it.leite==='leitePo' ? 'Leite em Pó' : '');
+    tags += '<span class="tag '+(it.completo?'tup':'tg')+'">'+(it.completo?('Completo · '+leiteNome):'Puro')+'</span>';
+    (it.toppings||[]).forEach(id => {
+      const tp = TOPPINGS.find(x => x.id === id);
+      if (tp) tags += '<span class="tag tup">+'+tp.nome+'</span>';
+    });
+  }
+  if (it.obs && it.obs.trim()) tags += '<span class="tag tg">📝 '+esc(it.obs.trim())+'</span>';
+  return tags;
+}
+function itemHtml(g){
+  const it = g[0], n = g.length, first = it.uid;
+  const ico = it.p.icon
+    ? '<span style="display:inline-block;vertical-align:middle">'+it.p.icon.replace('width="26" height="26"','width="17" height="17"')+'</span>'
+    : it.p.emoji;
+  return '<div class="oitem" data-g="'+first+'">'
+    + '<div class="otop"><div class="oname">'+ico+' '+it.p.name+'</div>'
+    +   '<div class="oprice">'+fmtUi(somaCent(g.map(x => x.preco)))+(n>1 ? '<span class="ounit">'+fmtUi(it.preco)+' cada</span>' : '')+'</div></div>'
+    + '<div class="otags">'+itemTags(it)+'</div>'
+    + '<div class="oact">'
+    +   '<div class="qty" role="group" aria-label="Quantidade de '+esc(it.p.name)+'">'
+    +     '<button type="button" data-k="m'+first+'" aria-label="Diminuir quantidade" onclick="menosGrupo('+first+')"'+(n<=1?' disabled':'')+'>−</button>'
+    +     '<output aria-live="polite">'+n+'</output>'
+    +     '<button type="button" data-k="p'+first+'" aria-label="Aumentar quantidade" onclick="maisGrupo('+first+')">+</button>'
+    +   '</div>'
+    +   '<button type="button" class="obtn edit" onclick="editarGrupo('+first+')">Editar</button>'
+    +   '<button type="button" class="obtn del" onclick="removerGrupo('+first+')">Remover</button>'
+    + '</div></div>';
+}
+function render(){
+  order = grupos().flat();          // unidades idênticas ficam juntas (e saem juntas no WhatsApp)
+  const foco = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null;
+  document.getElementById('empty').style.display = order.length ? 'none' : 'block';
+  document.getElementById('btn-pay').disabled = order.length === 0;
+  document.getElementById('bag-count').textContent = order.length
+    ? order.length + (order.length === 1 ? ' item' : ' itens') : 'sacola vazia';
+  const badge = document.getElementById('bag-badge');
+  badge.textContent = order.length; badge.style.display = order.length ? '' : 'none';
+  document.getElementById('bag').setAttribute('aria-label', order.length
+    ? 'Ver minha sacola: ' + order.length + (order.length === 1 ? ' item' : ' itens') : 'Ver minha sacola (vazia)');
+  document.getElementById('olist').innerHTML = grupos().map(itemHtml).join('');
+  if (foco){ const n = document.querySelector('#olist [data-k="'+foco+'"]'); if (n && !n.disabled) n.focus({ preventScroll:true }); }
+  aplicarEstoque();
+  atualizarResumo();
+}
+
+/* ════ NAVEGAÇÃO ════ */
+function irPara(id){
+  const s = document.getElementById(id);
+  if (!s) return;
+  document.querySelectorAll('#chips .chip').forEach(c => c.classList.toggle('on', c.dataset.sec === id));
+  s.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function irSacola(){ const s = document.getElementById('sec-sacola'); if (s) s.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function marcarChip(){
+  const chips = [...document.querySelectorAll('#chips .chip')].filter(c => c.style.display !== 'none');
+  if (!chips.length) return;
+  let ativo = chips[0];
+  chips.forEach(c => {
+    const s = document.getElementById(c.dataset.sec);
+    if (s && s.getBoundingClientRect().top <= 100) ativo = c;
+  });
+  chips.forEach(c => c.classList.toggle('on', c === ativo));
+}
+function limparErro(id){ const w = document.getElementById(id).closest('.iwrap'); if (w) w.classList.remove('err'); }
+function mostrarErroCampo(id, texto){
+  const el = document.getElementById(id), w = el.closest('.iwrap');
+  if (w){ w.classList.add('err'); const e = w.querySelector('.ierr'); if (e) e.textContent = texto; }
+  el.scrollIntoView({ block:'center', behavior:'smooth' });
+  el.focus({ preventScroll:true });
+}
+
+/* ════ PIX ════ */
+function crc16(s){
+  let crc = 0xFFFF;
+  for (let i=0;i<s.length;i++){
+    crc ^= (s.charCodeAt(i) << 8);
+    for (let b=0;b<8;b++) crc = (crc & 0x8000) ? ((crc<<1)^0x1021)&0xFFFF : (crc<<1)&0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+const tlv = (id,v) => id + String(v.length).padStart(2,'0') + v;
+
+/**
+ * Gera um ID de pedido curto: prefixo HB + timestamp base36 + 3 chars aleatórios.
+ * Só A-Za-z0-9, máx 25 chars (regra do BCB para txid).
+ * Ex.: "HBM1X9K2AB7"
+ */
+function gerarIdPedido(){
+  const t = Date.now().toString(36).toUpperCase();
+  const r = Math.random().toString(36).substring(2,5).toUpperCase();
+  return ('HB' + t + r).replace(/[^A-Za-z0-9]/g,'').substring(0,25);
+}
+
+/**
+ * Monta o payload "Pix Copia e Cola" (BR Code estático com valor).
+ * - Campo 01 (Point of Initiation Method) omitido: o BCB não o exige em QR estático.
+ * - txid: ID do pedido — permite correlacionar o Pix recebido com o pedido do WhatsApp.
+ * - infoAdicional: texto exibido ao pagador dentro do app do banco (ex.: "PEDIDO HB7K2").
+ * Base: Manual de Padrões para Iniciação do Pix (BCB) + Manual do BR Code.
+ */
+function montarPix(valor, txid, infoAdicional){
+  // Trabalha em centavos para evitar erros de ponto flutuante
+  const centavos = Math.round(Number(valor) * 100);
+  const valorStr = (centavos / 100).toFixed(2); // "57.90"
+
+  // Campo 26: GUI obrigatório + chave + infoAdicional (se couber nos 99 chars do template)
+  let subconta = tlv('00','br.gov.bcb.pix') + tlv('01', PIX_CHAVE);
+  if (infoAdicional) {
+    const espacoLivre = 99 - subconta.length - 4; // 4 = id "02" + tamanho
+    const info = String(infoAdicional)
+      .normalize('NFD').replace(/[̀-ͯ]/g,'') // remove acentos
+      .replace(/[^A-Za-z0-9 .\-]/g,'').trim()
+      .substring(0, espacoLivre);
+    if (info) subconta += tlv('02', info);
+  }
+
+  // txid: só alfanumérico, máx 25; fallback '***' (sem txid, válido pelo BCB)
+  const txidLimpo = txid
+    ? String(txid).replace(/[^A-Za-z0-9]/g,'').substring(0,25) || '***'
+    : '***';
+
+  // Monta o payload na ORDEM EXATA (a ordem altera o CRC) e anexa "6304" antes do CRC
+  const body =
+    tlv('00','01') +                                   // Payload Format Indicator
+    tlv('26', subconta) +                              // Merchant Account Information (Pix)
+    tlv('52','0000') +                                 // Merchant Category Code (não informado)
+    tlv('53','986') +                                  // Moeda: BRL
+    (centavos > 0 ? tlv('54', valorStr) : '') +        // Valor da transação
+    tlv('58','BR') +                                   // País
+    tlv('59', PIX_NOME.substring(0,25)) +              // Nome do recebedor (máx 25)
+    tlv('60', PIX_CIDADE.substring(0,15)) +            // Cidade (máx 15)
+    tlv('62', tlv('05', txidLimpo)) +                  // Additional Data → txid
+    '6304';                                            // ID + tamanho do CRC (calculado abaixo)
+  return body + crc16(body);
+}
+
+function atualizarPix(){
+  const total = totalFinal();
+  const el = document.getElementById('pay-total');
+  if (el) el.textContent = fmt(total);
+  if (total <= 0 || typeof qrcode === 'undefined'){
+    document.getElementById('pix-qr').innerHTML = '';
+    document.getElementById('pix-code').dataset.code = '';
+    return;
+  }
+  // Usa o ID do pedido atual como txid para correlação no extrato
+   const txid = '***';
+  const info  = currentPixId ? ('PEDIDO ' + currentPixId + ' WHATSAPP') : '';
+  const code  = montarPix(total, txid, info);
+  const qr    = qrcode(0,'M');
+  qr.addData(code); qr.make();
+  document.getElementById('pix-qr').innerHTML = qr.createImgTag(5,0);
+  document.getElementById('pix-code').dataset.code = code;
+}
+function copiarPix(){
+  const code = document.getElementById('pix-code').dataset.code;
+  if (!code){ aviso('⚠️<br>Adicione itens<br>primeiro'); return; }
+  navigator.clipboard.writeText(code)
+    .then(() => aviso('✅<br>Código Pix<br>copiado!'))
+    .catch(() => aviso('⚠️<br>Copie<br>manualmente'));
+}
+
+/* ════ ENDEREÇO, FRETE E FORMA DE PAGAMENTO ════
+   Frete:
+   - Se a chave "freteUrl" da planilha estiver VAZIA, a entrega fica
+     "a confirmar pela equipe" e o pedido vai sem Pix (a equipe usa o equipe.html).
+   - Se tiver a URL do App da Web (Apps Script), o site pede o km e a taxa
+     a ele. Qualquer falha volta para "a confirmar" — nunca inventa valor.
+   ═══════════════════════════════════════════════ */
+let FRETE = { status:'manual' };   // manual | calculando | ok | fora | erro
+let PAGAMENTO = 'pix';             // pix | cartao
+let CIDADE_ENTREGA = 'Indaiatuba-SP';
+let freteTimer = null, freteSeq = 0, ultimaConsultaFrete = '';
+let enviando = false;
+
+const normTxt = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const valorCampo = id => (document.getElementById(id).value || '').trim();
+const freteDefinido = () => FRETE.status === 'ok';
+const centavos = v => Math.round(Number(v) * 100);
+const totalFinal = () => (centavos(totalPedido()) + (freteDefinido() ? centavos(FRETE.valor) : 0)) / 100;
+const fmtKm = km => String(km).replace('.', ',');
+
+function cepDigitado(el){
+  const v = el.value.replace(/\D/g,'').slice(0,8);
+  el.value = v.length > 5 ? v.slice(0,5) + '-' + v.slice(5) : v;
+  const msg = document.getElementById('cep-msg');
+  msg.className = 'cep-msg'; msg.textContent = '';
+  if (v.length === 8) buscarCep(v);
+}
+
+async function buscarCep(cep){
+  const msg = document.getElementById('cep-msg');
+  msg.className = 'cep-msg'; msg.textContent = 'Buscando endereço…';
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/', { signal: ctrl.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (!d || d.erro) throw new Error('CEP não encontrado');
+    if (d.logradouro) document.getElementById('cli-rua').value = d.logradouro;
+    if (d.bairro)     document.getElementById('cli-bairro').value = d.bairro;
+    CIDADE_ENTREGA = (d.localidade || 'Indaiatuba') + '-' + (d.uf || 'SP');
+    if (normTxt(d.localidade) !== 'indaiatuba') {
+      msg.className = 'cep-msg err';
+      msg.textContent = 'Esse CEP é de ' + d.localidade + '. A equipe confirma a entrega no WhatsApp.';
+    } else {
+      msg.className = 'cep-msg ok';
+      msg.textContent = d.logradouro ? '✓ Confira a rua e informe o número' : '✓ CEP geral da cidade: preencha a rua e o bairro';
+    }
+    const alvo = d.logradouro ? 'cli-num' : 'cli-rua';
+    document.getElementById(alvo).focus();
+  } catch (e) {
+    msg.className = 'cep-msg err';
+    msg.textContent = 'Não achamos esse CEP. Preencha rua e bairro abaixo.';
+  }
+  enderecoMudou();
+}
+
+function enderecoTexto(){
+  const cep = valorCampo('cli-cep');
+  return valorCampo('cli-rua') + ', ' + valorCampo('cli-num') + ' - ' + valorCampo('cli-bairro')
+       + ', ' + CIDADE_ENTREGA.replace('-', ' - ') + (cep ? ', ' + cep : '') + ', Brasil';
+}
+
+function enderecoMudou(){
+  clearTimeout(freteTimer);
+  if (!FRETE_URL) { atualizarResumo(); return; }
+  freteTimer = setTimeout(calcularFrete, 900);
+}
+
+async function calcularFrete(){
+  if (!FRETE_URL) { FRETE = { status:'manual' }; atualizarResumo(); return; }
+  if (!valorCampo('cli-rua') || !valorCampo('cli-num') || !valorCampo('cli-bairro')) {
+    FRETE = { status:'manual' }; ultimaConsultaFrete = ''; atualizarResumo(); return;
+  }
+  const end = enderecoTexto();
+  const chave = end + '|' + PAGAMENTO;
+  if (chave === ultimaConsultaFrete && FRETE.status !== 'erro') return;
+  ultimaConsultaFrete = chave;
+  const seq = ++freteSeq;
+  FRETE = { status:'calculando' }; atualizarResumo();
+  try {
+    const url = FRETE_URL + (FRETE_URL.indexOf('?') >= 0 ? '&' : '?')
+      + 'end=' + encodeURIComponent(end) + '&pag=' + PAGAMENTO;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+    const d = await r.json();
+    if (seq !== freteSeq) return;
+    if (d && d.ok && typeof d.valor === 'number' && d.valor > 0) {
+      FRETE = { status:'ok', km:d.km, valor:d.valor, tabela:d.tabela || '' };
+    } else if (d && d.fora) {
+      FRETE = { status:'fora', km:d.km };
+    } else {
+      FRETE = { status:'erro' };
+    }
+  } catch (e) {
+    if (seq !== freteSeq) return;
+    FRETE = { status:'erro' };
+  }
+  atualizarResumo();
+}
+
+function desenharPagamentos(){
+  const opcoes = [
+    { id:'pix', t:'⚡ Pix antecipado', d:'Você paga pelo Pix antes do preparo.', rec:ACEITA_CARTAO },
+  ];
+  if (ACEITA_CARTAO) opcoes.push({ id:'cartao', t:'💳 Cartão na entrega', d:'Débito ou crédito na maquininha, com o entregador.' });
+  if (!opcoes.find(o => o.id === PAGAMENTO)) PAGAMENTO = 'pix';
+  document.getElementById('pagopts').innerHTML = opcoes.map(o =>
+    '<div class="pagopt ' + (PAGAMENTO === o.id ? 'on' : '') + '" role="radio" tabindex="0" aria-checked="' + (PAGAMENTO === o.id) + '"'
+    + ' onclick="setPagamento(\'' + o.id + '\')"'
+    + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();setPagamento(\'' + o.id + '\')}">'
+    + '<div class="rd"></div><div><div class="pt">' + o.t + (o.rec ? ' <span class="rec">Recomendado</span>' : '') + '</div><div class="pd">' + o.d + '</div></div></div>'
+  ).join('');
+}
+function setPagamento(p){
+  if (PAGAMENTO === p) return;
+  PAGAMENTO = p;
+  desenharPagamentos();
+  if (FRETE_URL) { ultimaConsultaFrete = ''; calcularFrete(); } else atualizarResumo();
+}
+
+function atualizarResumo(){
+  const sub = totalPedido();
+  document.getElementById('sec-resumo').style.display = order.length ? 'block' : 'none';
+  document.getElementById('res-sub').textContent = fmtUi(sub);
+  let lbl = '🛵 Entrega', val = 'a confirmar', nota = '';
+  if (FRETE.status === 'ok') {
+    lbl = '🛵 Entrega (' + fmtKm(FRETE.km) + ' km)'; val = fmtUi(FRETE.valor);
+  } else if (FRETE.status === 'calculando') {
+    val = 'calculando…';
+  } else if (FRETE.status === 'fora') {
+    val = 'a combinar';
+    nota = 'Seu endereço fica fora do nosso raio de entrega. Envie o pedido que a equipe combina com você no WhatsApp.';
+  } else {
+    nota = PAGAMENTO === 'pix'
+      ? 'A equipe confirma a taxa de entrega no WhatsApp e envia o Pix com o total. Não pague antes disso.'
+      : 'A equipe confirma a taxa de entrega no WhatsApp.';
+  }
+  document.getElementById('res-frete-lbl').textContent = lbl;
+  document.getElementById('res-frete').textContent = val;
+  document.getElementById('res-total').textContent = freteDefinido() ? fmtUi(totalFinal()) : fmtUi(sub) + ' + entrega';
+  document.getElementById('res-nota').textContent = nota;
+  document.getElementById('total-lbl').textContent = freteDefinido() ? 'Total' : 'Produtos';
+  document.getElementById('total').textContent = fmtUi(freteDefinido() ? totalFinal() : sub);
+}
+
+/* ════ PAGAMENTO ════ */
+function passosHtml(passos){
+  return '<div class="steps">' + passos.map((p,i) =>
+    '<div class="step"><div class="step-n">' + (i+1) + '</div><div class="step-txt">' + p + '</div></div>'
+  ).join('') + '</div>';
+}
+
+/* Antes de finalizar, se a configuração tem mais de 5 min, confirma de novo na planilha
+   (loja ainda aberta? número do WhatsApp?). Sem confirmação, o pedido não segue. */
+async function abrirPagamento(){
+  if (Date.now() - CONFIG_EM > 5 * 60 * 1000) {
+    const c = await carregarConfigPlanilha();
+    if (!c) { aviso('⚠️<br>Não conseguimos confirmar<br>a loja. Tente de novo'); return; }
+    LOJA_FECHADA   = c.lojaFechada;
+    APENAS_ACAI    = c.apenasAcai;
+    WHATSAPP       = String(c.whatsapp);
+    PROXIMO_DIA    = c.proximoDia;
+    MENSAGEM_ATIVA = (c.mensagens && c.mensagens[(c.mensagemAtiva || 1) - 1]) || MENSAGEM_ATIVA;
+    CONFIG_EM = Date.now();
+    if (LOJA_FECHADA && !APENAS_ACAI) { mostrarFechado(); return; }
+  }
+  abrirPagamentoInterno();
+}
+function abrirPagamentoInterno(){
+  if (LOJA_FECHADA && !APENAS_ACAI){ aviso('😴<br>Encerramos<br>por hoje'); return; }
+  if (!order.length){ aviso('🛒<br>Adicione itens<br>ao seu pedido'); return; }
+  // Confere na mesma ordem da tela: nome → CEP → rua → número → bairro
+  const cepOk = valorCampo('cli-cep').replace(/\D/g,'').length === 8;
+  const faltando = [
+    ['cli-nome',   'Informe seu nome para continuar',  () => !!valorCampo('cli-nome')],
+    ['cli-tel',    'Informe seu WhatsApp com DDD',     telefoneValido],
+    ['cli-cep',    'Informe o CEP (8 números)',        () => cepOk],
+    ['cli-rua',    'Informe a rua da entrega',         () => !!valorCampo('cli-rua')],
+    ['cli-num',    'Informe o número da casa',         () => !!valorCampo('cli-num')],
+    ['cli-bairro', 'Informe o bairro da entrega',      () => !!valorCampo('cli-bairro')],
+  ].find(([, , ok]) => !ok());
+  if (faltando){ mostrarErroCampo(faltando[0], faltando[1]); return; }
+  if (FRETE.status === 'calculando'){ aviso('⏳<br>Calculando a entrega…<br>um instante'); return; }
+
+  // Gera o ID do pedido uma única vez — usado na mensagem do WhatsApp e no Pix
+  currentPixId = gerarIdPedido();
+  const comPix = PAGAMENTO === 'pix' && freteDefinido();
+  const linhaTotal = freteDefinido()
+    ? '<div class="pay-tl">Total com entrega</div><div class="pay-total" id="pay-total">' + fmtUi(totalFinal()) + '</div>'
+    : '<div class="pay-tl">Produtos</div><div class="pay-total" id="pay-total">' + fmtUi(totalPedido()) + '</div>'
+      + '<div class="pay-note" style="margin-top:-8px">+ entrega a confirmar pela equipe</div>';
+
+  let html;
+  if (comPix && MOSTRAR_PIX_NA_TELA) {
+    // Modo desktop/tablet: mostra QR na tela para escanear com outro celular
+    html = '<div class="pay-step">Passo 1 · Pague com Pix</div>'
+      + linhaTotal
+      + '<div class="pay-qr"><div id="pix-qr"></div></div>'
+      + '<div class="pay-hint">Escaneie com o app do banco ou copie o código</div>'
+      + '<button class="pay-copy" onclick="copiarPix()">📋 Copiar código Pix</button>'
+      + '<div class="code-hidden" id="pix-code"></div>'
+      + '<div class="pay-div"><span>DEPOIS DE PAGAR</span></div>'
+      + '<div class="pay-step">Passo 2 · Envie o pedido</div>'
+      + '<button class="pay-send" onclick="enviarPedido()">📲 Enviar pedido no WhatsApp</button>'
+      + '<div class="pay-note">Envie também o comprovante na mesma conversa 📸</div>';
+  } else if (comPix) {
+    // Modo mobile: o Pix (já com a entrega) vai no fim da mensagem do WhatsApp; o link só existe depois de ENVIAR.
+    html = '<div class="big-icon">📲</div>'
+      + '<div class="pay-step" style="text-align:center">Quase lá!</div>'
+      + linhaTotal
+      + '<div class="pay-alert">Assim que enviar a mensagem no WhatsApp, <b>clique no link de pagamento</b>.</div>'
+      + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido com Pix</button>';
+  } else if (PAGAMENTO === 'pix') {
+    // Pix, mas a entrega ainda não tem valor: a equipe manda o Pix com o total
+    html = '<div class="big-icon">🛵</div>'
+      + '<div class="pay-step" style="text-align:center">Quase lá!</div>'
+      + linhaTotal
+      + passosHtml([
+          'Toque abaixo para <b>enviar o pedido</b> no WhatsApp',
+          'A equipe confirma a <b>taxa de entrega</b> e te manda o <b>Pix com o total</b>',
+          'Pague e envie o <b>comprovante</b> na conversa',
+        ])
+      + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>'
+      + '<div class="pay-note">Não pague antes de receber o total. 🙏</div>';
+  } else {
+    // Cartão na entrega: nenhum Pix é gerado
+    html = '<div class="big-icon">💳</div>'
+      + '<div class="pay-step" style="text-align:center">Cartão na entrega</div>'
+      + linhaTotal
+      + passosHtml([
+          'Toque abaixo para <b>enviar o pedido</b> no WhatsApp',
+          freteDefinido() ? 'A equipe confirma e começa o preparo' : 'A equipe confirma a <b>taxa de entrega</b> e o total',
+          'Pague com <b>débito ou crédito</b> ao receber',
+        ])
+      + '<button class="pay-send-full" onclick="enviarPedido()">📲 Enviar Pedido</button>';
+  }
+  document.getElementById('pay-body').innerHTML = html;
+  if (comPix && MOSTRAR_PIX_NA_TELA) atualizarPix();
+  document.getElementById('pay-ov').classList.add('show');
+}
+function fecharPagamento(){ document.getElementById('pay-ov').classList.remove('show'); }
+
+/* ── telefone ── */
+function mascaraTel(v){
+  let d = String(v).replace(/\D/g,'');
+  if (d.length > 11 && d.indexOf('55') === 0) d = d.slice(2);   // "+55 19 99999-0000" (preenchimento automático ou colado)
+  d = d.slice(0,11);
+  if (d.length <= 2)  return d;
+  if (d.length <= 6)  return '(' + d.slice(0,2) + ') ' + d.slice(2);
+  if (d.length <= 10) return '(' + d.slice(0,2) + ') ' + d.slice(2,6) + '-' + d.slice(6);
+  return '(' + d.slice(0,2) + ') ' + d.slice(2,7) + '-' + d.slice(7);
+}
+function telDigitado(el){ el.value = mascaraTel(el.value); }
+function telefoneValido(){
+  let d = valorCampo('cli-tel').replace(/\D/g,'');
+  if (d.length >= 12 && d.indexOf('55') === 0) d = d.slice(2);
+  if (!/^[1-9][1-9]/.test(d)) return false;                 // DDD de 11 a 99
+  return d.length === 10 || (d.length === 11 && d[2] === '9');   // fixo (10) ou celular (11, começa com 9)
+}
+
+/* ── grava o pedido no painel; qualquer falha só significa "segue pelo WhatsApp como sempre" ── */
+function itensParaPainel(){
+  return order.map(it => ({ pid: it.p.id, tam: it.p.type === 'burger' ? it.size : 0, ponto: it.p.type === 'burger' ? it.ponto : '',
+    variant: it.p.type === 'bebida' ? it.variant : '', add: it.add || [], rem: it.rem || [], obs: it.obs || '',
+    completo: !!it.completo, leite: it.completo ? it.leite : null, toppings: it.toppings || [] }));
+}
+async function salvarPedidoNoPainel(corpo){
+  if (!PAINEL_ATIVO || !PEDIDOS_URL) return { ok:false, motivo:'desligado' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), LIMITE_SALVAR_MS);
+  try {
+    // text/plain evita a "consulta prévia" (CORS) que o Apps Script não responde
+    const res = await fetch(PEDIDOS_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(corpo), signal: ctrl.signal });
+    const j = await res.json();
+    return j && j.ok ? { ok:true } : { ok:false, motivo:(j && j.codigo) || 'recusado' };
+  } catch (e) {
+    return { ok:false, motivo: e && e.name === 'AbortError' ? 'demorou' : 'rede' };
+  } finally { clearTimeout(timer); }
+}
+
+/* Uso normal: dispara o envio e NÃO espera (keepalive deixa a requisição terminar mesmo com a troca para o WhatsApp). */
+function enviarAoPainelSemEspera(corpo){
+  if (!PAINEL_ATIVO || !PEDIDOS_URL) return;
+  try {
+    fetch(PEDIDOS_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(corpo), keepalive: true }).catch(() => {});
+  } catch (e) { /* o pedido segue pelo WhatsApp */ }
+}
+
+async function enviarPedido(){
+  if (enviando) return;            // evita pedido duplicado por toque duplo
+  enviando = true;
+  setTimeout(() => { enviando = false; }, MODO_TESTE ? 15000 : 4000);
+
+  const nome   = valorCampo('cli-nome');
+  const tel    = mascaraTel(valorCampo('cli-tel'));
+  const rua    = valorCampo('cli-rua');
+  const num    = valorCampo('cli-num');
+  const bairro = valorCampo('cli-bairro');
+  const comp   = valorCampo('cli-comp');
+  const cep    = valorCampo('cli-cep');
+  const sub    = totalPedido();
+  const comPix = PAGAMENTO === 'pix' && freteDefinido();
+  const total  = freteDefinido() ? totalFinal() : sub;
+
+  // Garante que temos um ID de pedido (pode ser chamado sem passar por abrirPagamento)
+  if (!currentPixId) currentPixId = gerarIdPedido();
+  const pedidoId = currentPixId;
+
+  // ─── Monta o texto do pedido ───────────────────────────────────────────────
+  let msg = "🍔 *PEDIDO CUNHO'S BURGUER*\n";
+  msg += '🔖 *Pedido #' + pedidoId + '*\n';
+  msg += '👤 *' + nome + '*\n';
+  msg += '📞 Telefone: ' + tel + '\n';
+  msg += '📍 Endereço: ' + rua + ', ' + num + ' - ' + bairro + ', ' + CIDADE_ENTREGA + '\n';
+  if (cep)  msg += '📮 CEP: ' + cep + '\n';
+  if (comp) msg += '🏠 Compl.: ' + comp + '\n';
+  msg += '━━━━\n\n';
+  order.forEach((it,i) => {
+    msg += '*' + (i+1) + '. ' + it.p.emoji + ' ' + it.p.name + '*\n';
+    if (it.p.type === 'burger'){
+      msg += '   Carne: ' + (it.p.duplo ? ((it.size*2)+'g (2× '+it.size+'g)') : (it.size+'g')) + '\n';
+      msg += '   Ponto: ' + it.ponto + '\n';
+      it.add.forEach(id => {
+        const a = ADICIONAIS.find(x => x.id === id);
+        const n = a.id==='carne' ? (a.nome+' '+it.size+'g') : a.nome;
+        msg += '   ➕ ' + n + ' (+' + fmt(precoAdd(a,it.size)) + ')\n';
+      });
+      it.rem.forEach(r => msg += '   ❌ Sem ' + r + '\n');
+    } else if (it.p.type === 'bebida'){
+      msg += '   Tipo: ' + it.variant + '\n';
+    } else if (it.p.type === 'sobremesa'){
+      if (it.completo){
+        const leiteNome = it.leite==='leiteCond' ? 'leite condensado' : 'leite em pó';
+        msg += '   Completo — granola + ' + leiteNome + '\n';
+      } else {
+        msg += '   Puro\n';
+      }
+      (it.toppings||[]).forEach(id => {
+        const tp = TOPPINGS.find(x => x.id === id);
+        if (tp) msg += '   ➕ ' + tp.nome + ' avulso (+' + fmt(tp.preco) + ')\n';
+      });
+    }
+    if (it.obs && it.obs.trim()) msg += '   📝 Obs: ' + it.obs.trim() + '\n';
+    msg += '   💵 ' + fmt(it.preco) + '\n\n';
+  });
+  msg += '━━━━\n';
+  msg += '🧾 Produtos: ' + fmt(sub) + '\n';
+  if (freteDefinido()) {
+    msg += '🛵 Entrega: ' + fmt(FRETE.valor) + ' (' + fmtKm(FRETE.km) + ' km' + (FRETE.tabela ? ' · ' + FRETE.tabela : '') + ')\n';
+    msg += '💰 *TOTAL: ' + fmt(total) + '*\n';
+  } else {
+    msg += '🛵 Entrega: *a confirmar pela equipe*\n';
+    msg += '💰 *TOTAL: ' + fmt(sub) + ' + entrega*\n';
+  }
+  msg += '💳 Pagamento: *' + (PAGAMENTO === 'pix' ? 'Pix antecipado' : 'Cartão na entrega') + '*\n\n';
+
+  if (comPix) {
+    // ─── Bloco do Pix — link para página de pagamento (total já com entrega) ──
+    const pixCode = montarPix(total, '***', 'PEDIDO ' + pedidoId);
+    const pixBase = window.location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '');
+    const pixUrl  = pixBase + 'pix.html'
+      + '?c=' + encodeURIComponent(pixCode)
+      + '&v=' + encodeURIComponent(total.toFixed(2))
+      + '&p=' + encodeURIComponent(pedidoId);
+    msg += '━━━━\n';
+    msg += '💳 *PAGUE COM PIX*\n';
+    msg += '_Toque no link abaixo → copie o código → abra seu banco → Pix Copia e Cola → cole:_\n\n';
+    msg += pixUrl + '\n\n';
+    msg += '📸 _Após pagar, envie o comprovante nessa conversa._\n';
+    msg += '_Só começamos a preparar depois do comprovante. Obrigado!_ 🙏';
+  } else if (PAGAMENTO === 'pix') {
+    msg += '⏳ _Vamos confirmar a taxa de entrega e te enviar o Pix com o total. Por favor, não pague antes disso._ 🙏';
+  } else {
+    msg += '💳 _Pagamento com cartão (débito ou crédito) na entrega._';
+  }
+
+  // 1) Grava o pedido no painel. Qualquer falha só significa "segue pelo WhatsApp, como sempre foi".
+  const corpoPainel = {
+    acao:'criar_pedido', pedidoId, teste: MODO_TESTE, pagamento: PAGAMENTO, origem: MODO_TESTE ? 'site-teste' : 'site',
+    cliente:{ nome, telefone: tel, endereco:{ rua, numero: num, bairro, cep, complemento: comp } },
+    itens: itensParaPainel(), frete: freteDefinido() ? FRETE.valor : null, total: freteDefinido() ? total : null };
+  const botao = document.querySelector('#pay-body .pay-send-full, #pay-body .pay-send');
+  if (MODO_TESTE) {
+    // Modo teste (?teste=1): espera a resposta para mostrar se gravou
+    if (botao){ botao.dataset.rotulo = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Enviando…'; }
+    const salvo = await salvarPedidoNoPainel(corpoPainel);
+    if (!salvo.ok) console.warn('[Cunhos] Pedido não gravado no painel (' + salvo.motivo + ').');
+    aviso(salvo.ok ? '✅<br>Gravado no painel<br>(TESTE)' : '⚠️<br>Não gravou no painel<br>(' + salvo.motivo + ')');
+    await new Promise(r => setTimeout(r, 1800));   // dá tempo de ler o aviso
+  } else {
+    enviarAoPainelSemEspera(corpoPainel);          // uso normal: não atrasa o WhatsApp
+  }
+
+  // 2) Abre o WhatsApp com window.location para evitar bloqueio no iOS
+  fecharPagamento();
+  window.location.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg);
+  setTimeout(() => { enviando = false; if (botao){ botao.disabled = false; if (botao.dataset.rotulo) botao.textContent = botao.dataset.rotulo; } }, 4000);
+
+  // Reseta o ID após o envio — próximo pedido gera um novo
+  currentPixId = null;
+}
+function abrirWhats(){
+  window.open('https://wa.me/' + WHATSAPP + '?text=' +
+    encodeURIComponent('Olá! Segue o comprovante do Pix do meu pedido 📸'), '_blank');
+}
+function fecharComp(){ document.getElementById('modal-comp').classList.remove('show'); }
+
+/* ════ AVISO ════ */
+function aviso(msg){
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.toggle('ok', msg.indexOf('✅') >= 0);
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 3500);
+}
+
+/* ════════════════════════════════════════════
+   🚀 INICIALIZAÇÃO — carrega a planilha e inicia.
+   Sem planilha válida o site NÃO libera pedidos (ver carregarConfigPlanilha).
+   ════════════════════════════════════════════ */
+function mostrarFechado(){
+  const msg    = MENSAGEM_ATIVA;
+  const textoF = msg.texto.replace(/\{dia\}/g, PROXIMO_DIA);
+  document.getElementById('f-icone').textContent  = msg.icone;
+  document.getElementById('f-titulo').textContent = msg.titulo;
+  document.getElementById('f-texto').textContent  = textoF;
+  document.getElementById('fechado').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+async function iniciar() {
+  const $ = id => document.getElementById(id);
+  // Estado limpo (também usado pelo botão "Tentar novamente")
+  ['fechado','erro-cfg'].forEach(id => $(id).classList.remove('show'));
+  $('aviso-parcial').style.display = 'none';
+  $('sec-burger').style.display = '';
+  $('sec-bebida').style.display = '';
+  document.body.style.overflow = '';
+  $('loading-ov').classList.remove('hide');
+
+  // Carrega config da planilha Google Sheets
+  const config = await carregarConfigPlanilha();
+  $('loading-ov').classList.add('hide');
+  if (!config) {
+    // Sem configuração confiável: nada de cardápio nem de pedido
+    $('erro-cfg').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  aplicarConfig(config);
+  CONFIG_EM = Date.now();
+
+  // Exibe a tela correta
+  if (LOJA_FECHADA && !APENAS_ACAI) {
+    // Loja 100% fechada — bloqueia tudo
+    mostrarFechado();
+  } else {
+    desenharCards();
+    desenharPagamentos();
+    render();
+    const st = $('status-loja');
+    if (LOJA_FECHADA && APENAS_ACAI) {
+      // Hambúrguer fechado, mas açaí continua disponível
+      const msg    = MENSAGEM_ATIVA;
+      const textoF = msg.texto.replace(/\{dia\}/g, PROXIMO_DIA);
+      $('aviso-parcial-icone').textContent  = msg.icone;
+      $('aviso-parcial-titulo').textContent = msg.titulo;
+      $('aviso-parcial-texto').textContent  = textoF;
+      $('aviso-parcial').style.display = 'block';
+      $('sec-burger').style.display = 'none';
+      $('sec-bebida').style.display = 'none';
+      st.textContent = 'Só açaí agora';
+      st.className = 'status partial';
+    } else {
+      st.textContent = 'Aberto';
+      st.className = 'status';
+    }
+    // Categorias: só as seções que estão visíveis
+    document.querySelectorAll('#chips .chip').forEach(c => {
+      const s = $(c.dataset.sec);
+      c.style.display = (s && s.style.display === 'none') ? 'none' : '';
+    });
+    const visiveis = [...document.querySelectorAll('#chips .chip')].filter(c => c.style.display !== 'none');
+    $('chips').style.display = visiveis.length > 1 ? '' : 'none';
+    marcarChip();
+  }
+}
+
+let chipRaf = 0;
+window.addEventListener('scroll', () => {
+  if (chipRaf) return;
+  chipRaf = requestAnimationFrame(() => { chipRaf = 0; marcarChip(); });
+}, { passive:true });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('dlg-edit').classList.contains('show')) fecharDlgEdit();
+  else if (document.getElementById('mont').classList.contains('show')) fecharMont();
+});
+
+/* Esta cópia de teste (novo.html) não deve aparecer no Google; ao virar index.html essa regra some sozinha. */
+if (/novo\.html$/.test(location.pathname)) { const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex'; document.head.appendChild(m); }
+if (MODO_TESTE) {
+  const f = document.createElement('div');
+  f.textContent = '🧪 MODO TESTE — pedidos feitos aqui ficam marcados como TESTE';
+  f.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#facc15;color:#000;font:700 12px/1.3 system-ui,sans-serif;text-align:center;padding:5px';
+  document.body.appendChild(f);
+}
+
+iniciar();
+</script>
+</body>
+</html>

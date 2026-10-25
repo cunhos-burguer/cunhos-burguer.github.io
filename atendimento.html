@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Atendimento — Cunho's</title>
+<link rel="stylesheet" href="painel.css">
+<style>
+.lista { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:10px; }
+.cartao { background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:12px; }
+.cartao.estourou { border-color:var(--vermelho); box-shadow:0 0 0 1px var(--vermelho); }
+.cartao.novo { animation:destaque 1.1s 4; }
+@keyframes destaque { 50% { background:#3a2410; } }
+.linha1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.num { font-family:'Bebas Neue',Impact,sans-serif; font-size:26px; letter-spacing:1px; color:var(--laranja); }
+.nome { font-weight:800; font-size:17px; }
+.mudo { color:var(--mudo); font-size:13px; }
+.chips { display:flex; gap:5px; flex-wrap:wrap; margin:6px 0; }
+.relogio-linha { margin:8px 0; padding:8px 10px; background:#111; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:14px; }
+.relogio-linha .tempo { font-size:20px; }
+.resumo-itens { font-size:14px; margin:6px 0; }
+.acoes { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.acoes .btn { flex:1 1 auto; }
+details { margin-top:6px; }
+summary { cursor:pointer; color:var(--mudo); font-size:13px; padding:4px 0; }
+.det { font-size:13px; color:#d8d2c8; line-height:1.55; }
+.msg { border:1px solid var(--borda); border-radius:12px; padding:10px; margin:10px 0; background:#141414; }
+.msg textarea { margin:6px 0; min-height:92px; resize:vertical; }
+.tab { width:100%; border-collapse:collapse; font-size:14px; }
+.tab th, .tab td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--borda); vertical-align:top; }
+.tab th { color:var(--mudo); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
+.ed { border:1px solid var(--borda); border-radius:12px; padding:10px; margin-bottom:10px; background:var(--card); }
+.ed .duas { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.help { background:#1b1b1b; border:1px dashed var(--borda); border-radius:12px; padding:10px; font-size:13px; color:var(--mudo); margin-bottom:12px; }
+code { background:#000; padding:1px 5px; border-radius:5px; color:#ffb27a; }
+</style>
+</head>
+<body>
+<div class="topo">
+  <h1>Atendimento</h1>
+  <span id="conexao" class="ponto" title="Conexão"></span>
+  <button class="btn peq" id="btn-som" type="button">🔔 Ativar som</button>
+  <button class="btn peq" id="btn-sair" type="button">Sair</button>
+</div>
+<div class="abas" role="tablist">
+  <button class="aba on" data-aba="pedidos" type="button">Pedidos <span id="n-ped"></span></button>
+  <button class="aba" data-aba="clientes" type="button">Clientes</button>
+  <button class="aba" data-aba="modelos" type="button">Modelos de mensagem</button>
+</div>
+<div class="conteudo">
+  <div id="v-pedidos"></div>
+  <div id="v-clientes" hidden></div>
+  <div id="v-modelos" hidden></div>
+</div>
+<div class="fundo" id="fundo"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+
+<script>window.PAPEL_DA_PAGINA = 'atendimento';</script>
+<script src="painel.js"></script>
+<script>
+let aba = 'pedidos', conhecidos = null, destacar = new Set(), abertos = new Set();
+const ROTULO = { aguardando: 'Aguardando comprovante', em_producao: 'Em produção', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' };
+
+/* ───────── cartão de pedido ───────── */
+function chipsCliente(p, E) {
+  const cli = E.clientes[p.cliente.telefone] || {}, c = [];
+  if (p.teste) c.push('<span class="chip verm">🧪 TESTE</span>');
+  if (p.divergencia) c.push('<span class="chip amar">⚠ valor do site diferente: conferir</span>');
+  if (p.freteAConfirmar) c.push('<span class="chip amar">🛵 frete a confirmar</span>');
+  if (p.pagamento === 'cartao') c.push('<span class="chip azul">💳 cartão na entrega</span>');
+  if (!ehRecorrente(p)) c.push('<span class="chip azul">🆕 Cliente novo</span>');
+  else c.push(`<span class="chip laranja">🔁 ${p.ordemDoCliente}º pedido</span>`);
+  if ((cli.pedidosPagos || 0) >= E.config.clienteFielApartirDe) c.push('<span class="chip amar">⭐ Cliente fiel</span>');
+  if (ehRecorrente(p) && p.anteriorEm) c.push(`<span class="chip">📅 Último pedido: ${quandoFoi(p.anteriorEm)}</span>`);
+  if (brindeDevido(cli, p, E) && !p.brinde) c.push('<span class="chip verde">🎁 Sugerir brinde</span>');
+  if (p.brinde) c.push('<span class="chip verde">🎁 Brinde dado</span>');
+  return c.join('');
+}
+function cartao(p) {
+  const E = App.E, a = p.cliente.endereco;
+  let relogio = '';
+  if (p.status === 'aguardando') relogio = `<div class="relogio-linha"><span class="rot">⏳ Comprovante do Pix</span><span class="tempo" data-t="espera" data-fim="${p.esperaAte}"></span></div>`;
+  else if (p.status === 'em_producao') relogio = `<div class="relogio-linha"><span>🔥 Na produção</span><span class="tempo" data-t="prod" data-ini="${p.producaoInicio}"></span></div>`;
+  else if (p.status === 'pronto') relogio = `<div class="relogio-linha"><span>✅ Pronto às ${hhmm(p.prontoEm)}</span><span class="chip verde">aguardando saída</span></div>`;
+  else if (p.status === 'saiu') relogio = `<div class="relogio-linha"><span>🛵 Saiu às ${hhmm(p.saiuEm)}</span><span class="tempo" data-t="rota" data-ini="${p.saiuEm}"></span></div>`;
+  const botoes = {
+    aguardando: `<button class="btn ok" data-a="confirmar_pagamento">✅ Comprovante conferido → produção</button>`,
+    em_producao: `<span class="mudo" style="align-self:center">A produção marca "pronto".</span>`,
+    pronto: `<button class="btn pri" data-a="saiu">🛵 Saiu para entrega</button><button class="btn peq" data-a="voltar_producao">↩ Voltar p/ produção</button>`,
+    saiu: `<button class="btn pri" data-a="entregue">📦 Entregue</button>`,
+  }[p.status] || '';
+  const ativo = !['entregue', 'cancelado'].includes(p.status);
+  return `<div class="cartao ${destacar.has(p.id) ? 'novo' : ''}" data-id="${p.id}">
+    <div class="linha1"><span class="num">#${p.numero}</span><span class="nome">${esc(p.cliente.nome)}</span><span class="chip" style="margin-left:auto">${ROTULO[p.status]}</span></div>
+    <div class="mudo">${esc(fmtTel(p.cliente.telefone))} · ${esc(a.bairro)} · chegou às ${hhmm(p.criadoEm)}</div>
+    <div class="chips">${chipsCliente(p, E)}</div>
+    <div class="resumo-itens"><b>${brl(p.total)}</b> · ${esc(resumoItens(p).join(' · '))}</div>
+    ${relogio}
+    <div class="acoes">
+      ${ativo ? `<button class="btn" data-a="mensagens">💬 Mensagens</button>` : ''}
+      ${botoes}
+      ${ativo && !p.brinde && brindeDevido(E.clientes[p.cliente.telefone], p, E) ? `<button class="btn peq" data-a="brinde">🎁 Brinde vai neste pedido</button>` : ''}
+    </div>
+    <details data-det="${p.id}" ${abertos.has(p.id) ? 'open' : ''}><summary>Detalhes e histórico</summary><div class="det">
+      📍 ${esc(a.rua)}, ${esc(a.numero)} — ${esc(a.bairro)}${a.complemento ? ' (' + esc(a.complemento) + ')' : ''}${a.cep ? ' · CEP ' + esc(a.cep) : ''}<br>
+      Subtotal ${brl(p.subtotal)} + frete ${brl(p.frete)} = <b>${brl(p.total)}</b> (Pix)<br>
+      ${p.historico.map(h => `${hhmm(h.quando)} — ${esc(h.acao)}`).join('<br>')}
+      ${ativo ? `<div style="margin-top:8px"><button class="btn peq perigo" data-a="cancelar">Cancelar pedido</button></div>` : ''}
+    </div></details>
+  </div>`;
+}
+function secao(titulo, lista, vazio) {
+  return `<div class="sec"><h2>${titulo} <span class="n">${lista.length}</span></h2>` +
+    (lista.length ? `<div class="lista">${lista.map(cartao).join('')}</div>` : `<div class="vazio">${vazio}</div>`) + '</div>';
+}
+function renderPedidos() {
+  const E = App.E, por = s => E.pedidos.filter(p => s.includes(p.status));
+  const porChegada = lista => lista.sort((a, b) => a.criadoEm - b.criadoEm);   // ordem de chegada: o primeiro pedido feito fica sempre no topo
+  const ag = porChegada(por(['aguardando'])), pr = porChegada(por(['em_producao']));
+  const sa = porChegada(por(['pronto', 'saiu'])), fim = por(['entregue', 'cancelado']).slice(-8).reverse();
+  $('#v-pedidos').innerHTML = secao('⏳ Aguardando comprovante', ag, 'Nenhum pedido esperando comprovante.') + secao('🔥 Em produção', pr, 'Nada na grelha agora.') +
+    secao('🛵 Prontos e em entrega', sa, 'Nenhum pedido para entregar.') + secao('Concluídos (últimos)', fim, 'Ainda não há pedidos concluídos.');
+  $('#n-ped').textContent = ag.length ? `(${ag.length} novo${ag.length > 1 ? 's' : ''})` : '';
+  document.title = (ag.length ? `(${ag.length}) ` : '') + 'Atendimento — Cunho\'s';
+  tick();
+}
+
+/* ───────── cronômetros (atualizam a cada segundo, sem redesenhar a tela) ───────── */
+function tick() {
+  if (!App.E) return; const agora = agoraV(), meta = App.E.config.metaProducaoMin * 60000;
+  $$('[data-t="espera"]').forEach(el => { const r = Number(el.dataset.fim) - agora, c = el.closest('.cartao'), rot = $('.rot', c);
+    if (r > 0) { el.textContent = mmss(r); el.className = 'tempo ' + (r < 20000 ? 't-alerta' : 't-ok'); c.classList.remove('estourou'); rot.textContent = '⏳ Comprovante do Pix'; }
+    else { el.textContent = '+' + mmss(-r); el.className = 'tempo t-atraso'; c.classList.add('estourou'); rot.textContent = '⏰ Tempo esgotado: cobrar o comprovante'; } });
+  $$('[data-t="prod"]').forEach(el => { const d = agora - Number(el.dataset.ini), k = classeTempo(d, meta); el.textContent = mmss(d) + ' / ' + mmss(meta); el.className = 'tempo ' + k[0]; });
+  $$('[data-t="rota"]').forEach(el => { el.textContent = 'há ' + mmss(agora - Number(el.dataset.ini)); el.className = 'tempo'; });
+}
+setInterval(tick, 1000);
+
+/* ───────── ações ───────── */
+const fazer = (id, a, extra) => fazerAcao(id, a, extra);   // mostra na hora; o servidor confirma em seguida
+App.redesenhar = () => { renderPedidos(); if (aba === 'clientes') renderClientes(); };
+$('#v-pedidos').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-a]'); if (!b) return; const id = b.closest('.cartao').dataset.id, a = b.dataset.a;
+  if (a === 'mensagens') return abrirMensagens(id);
+  if (a === 'cancelar') { if (!confirm('Cancelar este pedido?')) return; return fazer(id, 'cancelar', { motivo: 'cancelado no atendimento' }); }
+  fazer(id, a);
+});
+$('#v-pedidos').addEventListener('toggle', ev => { const d = ev.target; if (d.dataset && d.dataset.det) d.open ? abertos.add(d.dataset.det) : abertos.delete(d.dataset.det); }, true);
+
+/* ───────── mensagens prontas ───────── */
+function copiar(txt, onde) {
+  const feito = () => aviso('✅ Copiado!');
+  const velho = () => { const ta = onde || document.createElement('textarea'); if (!onde) { ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); }
+    ta.select(); let ok = false; try { ok = document.execCommand('copy') === true; } catch (e) {} if (!onde) ta.remove(); ok ? feito() : aviso('Não foi possível copiar sozinho: o texto ficou selecionado, toque e segure em "Copiar".'); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(feito).catch(velho); else velho();
+}
+function blocoMsg(m, p, ctx) {
+  const txt = renderModelo(m.texto, ctx), enviada = p.mensagens[m.id];
+  return `<div class="msg" data-mid="${esc(m.id)}"><div><b>${esc(m.titulo)}</b> <span class="chip">${esc(m.categoria)}</span> ${enviada ? `<span class="chip verde">enviada às ${hhmm(enviada)}</span>` : ''}</div>
+    <textarea rows="4" aria-label="Texto da mensagem">${esc(txt)}</textarea>
+    <div class="acoes"><button class="btn" data-m="copiar">📋 Copiar</button><button class="btn pri" data-m="wa">💬 Abrir no WhatsApp</button><button class="btn" data-m="enviada">✔ Marcar como enviada</button></div></div>`;
+}
+const SITUACAO = { aguardando: 'boas-vindas e pedido do comprovante do Pix', producao: 'pagamento confirmado e pedido indo para a grelha', pronto: 'pedido pronto, vai sair para entrega', saiu: 'pedido saiu para entrega', entregue: 'agradecimento após a entrega' };
+function abrirMensagens(id) {
+  const E = App.E, p = E.pedidos.find(x => x.id === id); if (!p) return; const ctx = ctxPedido(p, E), lista = modelosParaPedido(p, E).map(x => x.m);
+  const sug = lista.slice(0, 3), outras = lista.slice(3);
+  $('#modal').innerHTML = `<h3>Mensagens para ${esc(primeiroNome(p.cliente.nome))}</h3>
+    <div class="mudo">${esc(fmtTel(p.cliente.telefone))} · pedido #${p.numero} · ${ehRecorrente(p) ? 'cliente recorrente (' + p.ordemDoCliente + 'º pedido)' : 'cliente novo'}</div>
+    <div class="mudo" style="margin-top:6px">Sugeridas para este momento (você pode editar o texto antes de copiar):</div>
+    ${sug.map(m => blocoMsg(m, p, ctx)).join('')}
+    <details><summary>Mais mensagens (${outras.length})</summary>${outras.map(m => blocoMsg(m, p, ctx)).join('')}</details>
+    <details style="margin-top:10px"><summary>🤖 Quer outro jeito de escrever? Copiar pedido para a IA</summary>
+      <div class="mudo">Gera um texto pronto para colar no ChatGPT (ou outra IA). Nada é enviado daqui.</div>
+      <textarea id="prompt-ia" rows="7" style="margin:6px 0">${esc(montarPrompt(p, E, SITUACAO[etapaDoPedido(p)] || 'atendimento geral'))}</textarea>
+      <button class="btn" data-m="prompt">📋 Copiar para colar na IA</button></details>
+    <div class="acoes" style="margin-top:12px"><button class="btn" data-m="fechar" style="flex:1">Fechar</button></div>`;
+  $('#modal').dataset.id = id; $('#fundo').classList.add('show');
+}
+$('#modal').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-m]'); if (!b) return; const k = b.dataset.m, id = $('#modal').dataset.id, box = b.closest('.msg'), ta = box && $('textarea', box);
+  if (k === 'fechar') return fechar();
+  if (k === 'prompt') return copiar($('#prompt-ia').value, $('#prompt-ia'));
+  if (k === 'copiar') return copiar(ta.value, ta);
+  if (k === 'wa') { const p = App.E.pedidos.find(x => x.id === id); window.open('https://wa.me/' + p.cliente.telefone + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); return; }
+  if (k === 'enviada') { const m = App.E.modelos.find(x => x.id === box.dataset.mid); await fazer(id, 'mensagem', { chave: m.id, titulo: m.titulo }); abrirMensagens(id); }
+});
+function fechar() { $('#fundo').classList.remove('show'); }
+$('#fundo').addEventListener('click', ev => { if (ev.target.id === 'fundo') fechar(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fechar(); });
+
+/* ───────── clientes ───────── */
+function renderClientes() {
+  const E = App.E, lista = Object.values(E.clientes).sort((a, b) => b.pedidosPagos - a.pedidosPagos || (b.ultimoPedidoEm || 0) - (a.ultimoPedidoEm || 0));
+  $('#v-clientes').innerHTML = `<div class="sec"><h2>Clientes <span class="n">${lista.length}</span></h2>` + (lista.length ? `<table class="tab"><tr><th>Cliente</th><th>Pedidos pagos</th><th>Último pedido</th><th>Brinde</th><th></th></tr>` +
+    lista.map(c => { const meta = metaBrinde(c, E), falta = meta - c.pedidosDesdeBrinde, devido = falta <= 0, ult = c.brindes.length ? c.brindes[c.brindes.length - 1] : null;
+      return `<tr><td><b>${esc(c.nome)}</b><br><span class="mudo">${esc(fmtTel(c.telefone))}</span> ${c.pedidosPagos >= E.config.clienteFielApartirDe ? '<span class="chip amar">⭐ fiel</span>' : ''}</td><td>${c.pedidosPagos}</td>
+      <td>${c.ultimoPedidoEm ? quandoFoi(c.ultimoPedidoEm) : '—'}</td>
+      <td>${devido ? '<span class="chip verde">🎁 devido</span>' : falta === 1 ? '<span class="chip verde">🎁 no próximo pedido</span>' : 'faltam ' + falta + ' pedidos'}<br><span class="mudo">${c.brindes.length} dado(s)${ult ? ' · último ' + quandoFoi(ult) : ''}</span></td>
+      <td><button class="btn peq" data-tel="${esc(c.telefone)}">🎁 Marcar brinde dado</button></td></tr>`; }).join('') + '</table>' : '<div class="vazio">Ainda não há clientes.</div>') +
+    `<div class="mudo" style="margin-top:8px">Regras (você muda na aba Config da planilha): cliente fiel a partir de ${E.config.clienteFielApartirDe} pedidos pagos; 1º brinde no ${E.config.brindePrimeiro}º pedido pago e depois um a cada ${E.config.brindeACada} pedidos.</div></div>`;
+}
+$('#v-clientes').addEventListener('click', async ev => { const b = ev.target.closest('[data-tel]'); if (!b) return;
+  try { await api('cliente_brinde', { telefone: b.dataset.tel }); await carregar(true); renderClientes(); aviso('🎁 Brinde registrado'); } catch (e) { aviso(e.message); } });
+
+/* ───────── modelos (edição) ───────── */
+let editando = [];
+function renderModelos() {
+  editando = JSON.parse(JSON.stringify(App.E.modelos));
+  const ET = { aguardando: 'Aguardando comprovante', producao: 'Em produção', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', todas: 'Qualquer momento' }, PARA = { novo: 'Cliente novo', recorrente: 'Cliente recorrente', todos: 'Todos' };
+  const sel = (o, v) => Object.entries(o).map(([k, t]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${t}</option>`).join('');
+  $('#v-modelos').innerHTML = `<div class="help">Use estes campos dentro do texto: <code>{nome}</code> <code>{pedido}</code> <code>{total}</code> <code>{ordinal}</code> (2º, 3º…) <code>{saudacao}</code> (bom dia/tarde/noite) <code>{previsao}</code> (minutos).<br>
+    Tom de voz do “pedido para a IA” (você muda na aba Config da planilha): <i>${esc(App.E.config.tomDeVoz)}</i></div>` +
+    editando.map((m, i) => `<div class="ed" data-i="${i}"><label class="l">Título</label><input data-f="titulo" value="${esc(m.titulo)}">
+      <div class="duas"><div><label class="l">Categoria</label><input data-f="categoria" value="${esc(m.categoria)}"></div><div><label class="l">Quando aparece</label><select data-f="etapa">${sel(ET, m.etapa)}</select></div></div>
+      <label class="l">Para quem</label><select data-f="para">${sel(PARA, m.para)}</select>
+      <label class="l">Texto</label><textarea data-f="texto" rows="4">${esc(m.texto)}</textarea>
+      <div class="acoes"><button class="btn peq perigo" data-del="${i}" type="button">Excluir</button></div></div>`).join('') +
+    `<div class="acoes"><button class="btn" id="m-add" type="button">➕ Novo modelo</button><button class="btn pri" id="m-salvar" type="button">💾 Salvar todos</button><button class="btn perigo" id="m-padrao" type="button">Restaurar modelos padrão</button></div>`;
+}
+function lerEdicao() { $$('#v-modelos .ed').forEach(div => { const m = editando[Number(div.dataset.i)]; $$('[data-f]', div).forEach(el => { m[el.dataset.f] = el.value; }); }); }
+$('#v-modelos').addEventListener('click', async ev => {
+  const t = ev.target; if (t.id === 'm-add') { lerEdicao(); editando.push({ id: '', categoria: 'Outros', titulo: 'Novo modelo', etapa: 'todas', para: 'todos', texto: 'Olá, {nome}! ' }); App.E.modelos = editando; renderModelos(); return; }
+  if (t.dataset.del !== undefined) { lerEdicao(); editando.splice(Number(t.dataset.del), 1); App.E.modelos = editando; renderModelos(); return; }
+  try {
+    if (t.id === 'm-salvar') { lerEdicao(); await api('modelos_salvar', { modelos: editando }); await carregar(true); renderModelos(); aviso('💾 Modelos salvos'); }
+    if (t.id === 'm-padrao') { if (!confirm('Voltar para os modelos padrão? Suas edições serão perdidas.')) return; await api('modelos_salvar', { padrao: true }); await carregar(true); renderModelos(); aviso('Modelos padrão restaurados'); }
+  } catch (e) { aviso(e.message); }
+});
+
+/* ───────── abas, som e pedidos novos ───────── */
+$$('.aba').forEach(b => b.addEventListener('click', () => { aba = b.dataset.aba; $$('.aba').forEach(x => x.classList.toggle('on', x === b));
+  ['pedidos', 'clientes', 'modelos'].forEach(k => { $('#v-' + k).hidden = k !== aba; }); if (aba === 'clientes') renderClientes(); if (aba === 'modelos') renderModelos(); }));
+$('#btn-som').addEventListener('click', () => { ativarSom(); $('#btn-som').textContent = '🔔 Som ativado'; });
+function detectarNovos(E) {
+  const ids = new Set(E.pedidos.map(p => p.id));
+  if (conhecidos === null) { conhecidos = ids; return; }
+  const novos = E.pedidos.filter(p => !conhecidos.has(p.id) && p.status === 'aguardando'); conhecidos = ids;
+  if (novos.length) { novos.forEach(p => destacar.add(p.id)); setTimeout(() => { novos.forEach(p => destacar.delete(p.id)); }, 6000); alertaNovo(); aviso(`🔔 Novo pedido #${novos[0].numero} de ${primeiroNome(novos[0].cliente.nome)}`); }
+}
+$('#btn-sair').addEventListener('click', () => { if (confirm('Sair deste painel? Na próxima vez será preciso digitar a senha.')) { sair(); conhecidos = null; } });
+iniciarPainel((E, mudou) => { detectarNovos(E); if (mudou) { renderPedidos(); if (aba === 'clientes') renderClientes(); } else tick(); });
+</script>
+</body>
+</html>

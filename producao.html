@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Produção — Cunho's</title>
+<link rel="stylesheet" href="painel.css">
+<style>
+body { font-size:16px; }
+.layout { display:grid; grid-template-columns:minmax(300px,380px) 1fr; gap:14px; align-items:start; }
+@media (max-width:900px) { .layout { grid-template-columns:1fr; } }
+.lateral { position:sticky; top:74px; display:flex; flex-direction:column; gap:12px; }
+@media (max-width:900px) { .lateral { position:static; } }
+.painel { background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:12px; }
+.painel h2 { font-size:22px; color:var(--laranja); margin-bottom:8px; }
+.grade { width:100%; border-collapse:collapse; text-align:center; }
+.grade th { font-size:12px; color:var(--mudo); text-transform:uppercase; letter-spacing:.5px; padding:4px 2px; }
+.grade td { padding:7px 2px; border-top:1px solid var(--borda); font-size:22px; font-weight:800; }
+.grade td:first-child { text-align:left; font-size:17px; color:var(--mudo); }
+.grade td.z { color:#555; font-weight:400; }
+.grade td.tot { color:var(--laranja); }
+.lin { display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--borda); font-size:15px; }
+.lin:first-of-type { border-top:0; }
+.lin b { color:var(--laranja); font-size:18px; }
+.pedidos { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; }
+.ped { background:var(--card); border:2px solid var(--borda); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.ped.atraso { border-color:var(--vermelho); }
+.ped .cab { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ped .n { font-family:'Bebas Neue',Impact,sans-serif; font-size:40px; line-height:1; color:var(--laranja); }
+.ped .cli { font-weight:800; font-size:19px; }
+.ped .cron { margin-left:auto; text-align:right; }
+.ped .cron .tempo { font-size:30px; line-height:1; display:block; }
+.carnes { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:rgba(255,106,0,.10); border:1px solid rgba(255,106,0,.45); border-radius:12px; padding:8px 12px; }
+.carnes .ct { display:flex; align-items:baseline; gap:6px; }
+.carnes .ct b { font-family:'Bebas Neue',Impact,sans-serif; font-size:44px; line-height:1; color:var(--laranja); }
+.carnes .ct span { font-size:15px; font-weight:800; color:var(--mudo); text-transform:uppercase; }
+.carnes .cg { display:flex; gap:8px; flex-wrap:wrap; }
+.carnes .pt { font-size:18px; padding:5px 13px; }
+.it { border-top:1px dashed var(--borda); padding-top:9px; }
+.it .tit { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.it .q { font-size:30px; font-weight:900; color:#fff; min-width:48px; }
+.it .nm { font-size:20px; font-weight:800; }
+.pt { font-size:15px; font-weight:800; padding:3px 11px; border-radius:999px; }
+.pt-0 { background:rgba(96,165,250,.2); color:#9cc7ff; } .pt-1 { background:rgba(250,204,21,.2); color:#ffe066; } .pt-2 { background:rgba(255,93,93,.22); color:#ff9b9b; }
+.gr { font-size:15px; font-weight:800; background:#2c2c2c; border-radius:8px; padding:3px 9px; }
+.base { color:var(--mudo); font-size:14px; margin-top:4px; }
+.mods { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.mods span { font-size:15px; font-weight:800; padding:3px 10px; border-radius:8px; }
+.sem { background:rgba(255,93,93,.2); color:#ff9b9b; } .mais { background:rgba(74,222,128,.18); color:var(--verde); }
+.obs { margin-top:6px; background:rgba(250,204,21,.15); border:1px solid rgba(250,204,21,.45); color:#ffe066; border-radius:8px; padding:6px 9px; font-weight:700; }
+.rodape { display:flex; gap:8px; align-items:center; }
+.rodape .btn { flex:1; min-height:54px; font-size:18px; }
+.espera { color:var(--mudo); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="topo">
+  <h1>Produção</h1>
+  <span class="chip laranja" id="c-prod">Em produção: 0</span>
+  <span class="chip verm" id="c-atraso" style="display:none">Atrasados: 0</span>
+  <span class="chip" id="c-meta"></span>
+  <span id="conexao" class="ponto" title="Conexão"></span>
+  <button class="btn peq" id="btn-som" type="button">🔔 Ativar som</button>
+  <button class="btn peq" id="btn-sair" type="button">Sair</button>
+</div>
+<div class="conteudo">
+  <div class="layout">
+    <aside class="lateral" id="lateral"></aside>
+    <main>
+      <div class="sec"><h2 style="font-size:26px;color:var(--laranja);margin-bottom:8px">Pedidos em produção</h2><div class="pedidos" id="pedidos"></div></div>
+    </main>
+  </div>
+</div>
+<script>window.PAPEL_DA_PAGINA = 'producao';</script>
+<script src="painel.js"></script>
+<script>
+let conhecidos = null;
+const PONTOS = ['Ponto −', 'Ao ponto', 'Ponto +'];
+
+/* ─── totais para a grelha ─── */
+function totais(prod) {
+  const E = App.E, cat = E.catalogo, carnes = { 120: [0, 0, 0], 180: [0, 0, 0] }, bg = {}, extras = {};
+  prod.forEach(p => p.itens.forEach(i => {
+    if (i.tipo === 'burger') {
+      const pr = cat.produtos[i.pid], pi = Math.max(0, PONTOS.indexOf(i.ponto)), n = pr.carnes + i.add.filter(a => a === 'carne').length;
+      carnes[i.tam][pi] += n; const k = i.nome + ' ' + (pr.carnes === 2 ? i.tam * 2 : i.tam) + ' g'; bg[k] = (bg[k] || 0) + 1;
+    } else { const k = descItem(i, E) + (i.tipo === 'sobremesa' && i.toppings.length ? ' + ' + i.toppings.map(t => cat.toppings[t].nome).join(', ') : ''); extras[k] = (extras[k] || 0) + 1; }
+  }));
+  return { carnes, bg, extras };
+}
+function renderLateral(prod) {
+  const E = App.E, t = totais(prod);
+  const lin = o => Object.keys(o).length ? Object.entries(o).map(([k, v]) => `<div class="lin"><span>${esc(k)}</span><b>×${v}</b></div>`).join('') : '<div class="mudo">—</div>';
+  const ag = E.pedidos.filter(p => p.status === 'aguardando'), pr = E.pedidos.filter(p => p.status === 'pronto');
+  $('#lateral').innerHTML = `
+    <div class="painel"><h2>🍔 Hambúrgueres (todos os pedidos)</h2>${lin(t.bg)}
+      <div class="mudo" style="margin-top:6px">As carnes de cada pedido ficam dentro do cartão dele.</div></div>
+    <div class="painel"><h2>🥤 Bebidas e açaí</h2>${lin(t.extras)}</div>
+    <div class="painel"><h2>Fila</h2>
+      <div class="lin"><span>✅ Prontos aguardando saída</span><b>${pr.length}</b></div>
+      <div class="lin"><span>⏳ Aguardando comprovante</span><b>${ag.length}</b></div>
+      ${ag.length ? `<div class="espera">${ag.map(p => '#' + p.numero + ' ' + esc(primeiroNome(p.cliente.nome))).join(' · ')}</div>` : ''}
+    </div>`;
+}
+
+/* ─── carnes de UM pedido (Duplo = 2 carnes; "carne extra" = +1), por gramatura e ponto ─── */
+function carnesDoPedido(p) {
+  const cat = App.E.catalogo, m = new Map(); let total = 0;
+  p.itens.forEach(i => { if (i.tipo !== 'burger') return;
+    const n = cat.produtos[i.pid].carnes + i.add.filter(a => a === 'carne').length, pi = Math.max(0, PONTOS.indexOf(i.ponto)), k = pi + '|' + i.tam;
+    m.set(k, (m.get(k) || 0) + n); total += n; });
+  const grupos = [...m.entries()].map(([k, n]) => { const [pi, tam] = k.split('|').map(Number); return { pi, tam, n }; }).sort((a, b) => a.pi - b.pi || a.tam - b.tam);
+  return { total, grupos };
+}
+function blocoCarnes(p) {
+  const c = carnesDoPedido(p); if (!c.total) return '';
+  return `<div class="carnes"><div class="ct"><b>${c.total}</b><span>${c.total === 1 ? 'carne' : 'carnes'}</span></div>
+    <div class="cg">${c.grupos.map(g => `<span class="pt pt-${g.pi}"><b>${g.n}×</b> ${esc(PONTOS[g.pi])} · ${g.tam} g</span>`).join('')}</div></div>`;
+}
+
+/* ─── cartões ─── */
+function linhaItem(g) {
+  const i = g.item, E = App.E, pr = E.catalogo.produtos[i.pid];
+  if (i.tipo === 'burger') {
+    const ponto = Math.max(0, PONTOS.indexOf(i.ponto)), tamTxt = pr.carnes === 2 ? `${i.tam * 2} g (2×${i.tam})` : i.tam + ' g';
+    return `<div class="it"><div class="tit"><span class="q">${g.qtd}×</span><span class="nm">${esc(i.nome)}</span><span class="gr">${tamTxt}</span><span class="pt pt-${ponto}">${esc(i.ponto)}</span></div>
+      <div class="base">${esc(pr.ingredientes.join(' · '))}</div>
+      ${(i.rem.length || i.add.length) ? `<div class="mods">${i.rem.map(r => `<span class="sem">SEM ${esc(r)}</span>`).join('')}${i.add.map(a => `<span class="mais">+ ${esc(nomeAdd(a, E))}${a === 'carne' ? ' ' + i.tam + ' g' : ''}</span>`).join('')}</div>` : ''}
+      ${i.obs ? `<div class="obs">📝 ${esc(i.obs)}</div>` : ''}</div>`;
+  }
+  const extra = i.tipo === 'sobremesa' ? [...(i.completo ? ['Completo: granola + ' + (i.leite === 'leitePo' ? 'leite em pó' : 'leite condensado')] : ['Puro']), ...i.toppings.map(t => '+ ' + E.catalogo.toppings[t].nome + ' avulso')] : [i.variant];
+  return `<div class="it"><div class="tit"><span class="q">${g.qtd}×</span><span class="nm">${esc(i.nome)}</span></div><div class="mods">${extra.map(x => `<span class="mais">${esc(x)}</span>`).join('')}</div>${i.obs ? `<div class="obs">📝 ${esc(i.obs)}</div>` : ''}</div>`;
+}
+function cartao(p) {
+  const meta = App.E.config.metaProducaoMin * 60000;
+  return `<div class="ped" data-id="${p.id}">
+    <div class="cab"><span class="n">#${p.numero}</span><div><div class="cli">${esc(p.cliente.nome)}${p.teste ? ' <span class="chip verm">🧪 TESTE</span>' : ''}</div><div class="mudo">pago às ${hhmm(p.pagoEm)} · ${esc(p.cliente.endereco.bairro)}</div></div>
+      <div class="cron"><span class="tempo" data-ini="${p.producaoInicio}"></span><span class="mudo">meta ${mmss(meta)}</span></div></div>
+    ${blocoCarnes(p)}
+    <div class="barra" data-barra="${p.producaoInicio}"><i></i></div>
+    ${agruparItens(p).map(linhaItem).join('')}
+    <div class="rodape"><button class="btn ok" data-pronto="${p.id}" type="button">✔ PRONTO</button></div>
+  </div>`;
+}
+function render() {
+  const E = App.E, prod = E.pedidos.filter(p => p.status === 'em_producao').sort((a, b) => a.criadoEm - b.criadoEm);   // ordem de chegada: o primeiro pedido feito fica sempre no topo
+  $('#pedidos').innerHTML = prod.length ? prod.map(cartao).join('') : '<div class="vazio" style="grid-column:1/-1">Nenhum pedido na grelha. Quando o atendimento conferir o comprovante, o pedido aparece aqui.</div>';
+  renderLateral(prod); $('#c-meta').textContent = 'Meta: ' + E.config.metaProducaoMin + ' min por pedido'; tick();
+}
+function tick() {
+  if (!App.E) return; const agora = agoraV(), meta = App.E.config.metaProducaoMin * 60000; let atrasados = 0, n = 0;
+  $$('.ped').forEach(c => { const t = $('.tempo', c), d = agora - Number(t.dataset.ini), k = classeTempo(d, meta), b = $('.barra', c);
+    t.textContent = mmss(d); t.className = 'tempo ' + k[0]; b.className = 'barra ' + k[1]; $('i', b).style.width = Math.min(100, k[2]) + '%'; c.classList.toggle('atraso', d >= meta); n++; if (d >= meta) atrasados++; });
+  $('#c-prod').textContent = 'Em produção: ' + n; const a = $('#c-atraso'); a.style.display = atrasados ? '' : 'none'; a.textContent = 'Atrasados: ' + atrasados;
+}
+setInterval(tick, 1000);
+App.redesenhar = () => render();
+$('#pedidos').addEventListener('click', ev => { const b = ev.target.closest('[data-pronto]'); if (!b) return; b.disabled = true; fazerAcao(b.dataset.pronto, 'pronto'); });   // o cartão some na hora; o servidor confirma em seguida
+$('#btn-som').addEventListener('click', () => { ativarSom(); $('#btn-som').textContent = '🔔 Som ativado'; });
+$('#btn-sair').addEventListener('click', () => { if (confirm('Sair deste painel? Na próxima vez será preciso digitar a senha.')) { sair(); conhecidos = null; } });
+iniciarPainel((E, mudou) => {
+  const ids = new Set(E.pedidos.filter(p => p.status === 'em_producao').map(p => p.id));
+  if (conhecidos !== null) { const novos = [...ids].filter(i => !conhecidos.has(i)); if (novos.length) { alertaNovo(); aviso('🔥 Novo pedido na produção'); } }
+  conhecidos = ids; if (mudou) render(); else tick();
+});
+</script>
+</body>
+</html>
